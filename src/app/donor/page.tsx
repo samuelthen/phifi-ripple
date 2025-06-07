@@ -5,28 +5,16 @@ import { useRouter } from 'next/navigation';
 import { getWalletBalance } from '@/lib/xrpl/wallet';
 import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
 import DonationImpact from '@/components/donor/DonationImpact';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#8dd1e1', '#a4de6c'];
-
-interface ImpactData {
-  id: string;
-  donationId: string;
-  ngoId: string;
-  ngoName: string;
-  amount: string;
-  category: string;
-  recipient: string;
-  timestamp: number;
-  txHash: string;
-}
 
 export default function DonorDashboard() {
   const router = useRouter();
   const [userWallet, setUserWallet] = useState<any>(null);
   const [balance, setBalance] = useState<string>('0');
   const [donationNFTs, setDonationNFTs] = useState<any[]>([]);
-  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
+  const [impactMap, setImpactMap] = useState<Record<string, any>>({});
   const [categoryProportions, setCategoryProportions] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +65,7 @@ export default function DonorDashboard() {
                   id: nft.NFTokenID,
                   donationId: nft.NFTokenID,
                   ngoId: metadata.ngoId || '',
-                  ngoName: ngoName,
+                  ngoName,
                   amount: metadata.amount || '0',
                   category,
                   recipient: metadata.purpose || 'Unknown',
@@ -119,15 +107,13 @@ export default function DonorDashboard() {
         }
       }
 
-      // Calculate percentages
       const totalWeightedAmount = Object.values(weightedCategoryTotals).reduce((sum, val) => sum + val, 0);
       const categoryPercentages: Record<string, number> = {};
-      
       for (const [category, amount] of Object.entries(weightedCategoryTotals)) {
         categoryPercentages[category] = (amount / totalWeightedAmount) * 100;
       }
 
-      setImpactNFTs(Object.values(impactDict));
+      setImpactMap(impactDict);
       setCategoryProportions(categoryPercentages);
       setIsDataLoaded(true);
     } catch (err) {
@@ -173,62 +159,56 @@ export default function DonorDashboard() {
   return (
     <div className="max-w-4xl mx-auto mt-8 p-6">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Donor Dashboard</h1>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-600 mb-1">Wallet Address</p>
-            <p className="font-mono text-sm bg-gray-100 p-2 rounded">{userWallet.address}</p>
+        <h1 className="text-2xl font-bold mb-4">Donor Dashboard</h1>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-600">Wallet Address</p>
+            <p className="font-mono">{userWallet.address}</p>
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-600 mb-1">Balance</p>
-            <p className="text-2xl font-bold text-indigo-600">{balance} XRP</p>
+          <div>
+            <p className="text-sm text-gray-600">Balance</p>
+            <p className="font-bold">{balance} XRP</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Donation Receipts</h2>
+      <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Donation Receipts</h2>
             <button
               onClick={() => router.push('/donate')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200 flex items-center gap-2"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
-              <span>New Donation</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
+              New Donation
             </button>
           </div>
           {error ? (
-            <div className="bg-red-50 text-red-600 p-4 rounded-lg">{error}</div>
+            <p className="text-red-600">{error}</p>
           ) : donationNFTs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No donation receipts found.</p>
-              <p className="text-sm mt-2">Make your first donation to get started!</p>
-            </div>
+            <p>No donation receipts found.</p>
           ) : (
             <div className="space-y-4">
               {donationNFTs.map((nft) => {
                 try {
                   const metadata = nft.URI ? JSON.parse(nft.URI) : null;
                   return (
-                    <div key={nft.NFTokenID} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                    <div key={nft.NFTokenID} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold text-lg text-gray-800">{metadata?.ngoName || 'Unknown NGO'}</h3>
-                          <p className="text-sm text-gray-500">
+                          <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                          <p className="text-sm text-gray-600">
                             {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
                           </p>
                         </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                           {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
                         </span>
                       </div>
                       {metadata && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-sm font-medium text-gray-600">Purpose</p>
-                          <p className="text-sm text-gray-700 mt-1">{metadata.purpose}</p>
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600">Purpose</p>
+                          <p className="text-sm">{metadata.purpose}</p>
                         </div>
                       )}
                     </div>
@@ -240,42 +220,21 @@ export default function DonorDashboard() {
             </div>
           )}
         </div>
-
-        <DonationImpact
-          impacts={impactNFTs.map(nft => {
-            try {
-              const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-              const impact: ImpactData = {
-                id: nft.NFTokenID,
-                donationId: nft.NFTokenID,
-                ngoId: metadata?.wallet_address || metadata?.ngoId || '',
-                ngoName: metadata?.ngoName || 'Unknown NGO',
-                amount: metadata?.amount || '0',
-                category: metadata?.category || 'unknown',
-                recipient: metadata?.purpose || 'Unknown',
-                timestamp: metadata?.timestamp || Date.now(),
-                txHash: metadata?.txHash || '',
-              };
-              return impact;
-            } catch {
-              return null;
-            }
-          }).filter((impact): impact is ImpactData => impact !== null)}
-        />
+        <DonationImpact impacts={Object.values(impactMap)} />
 
         {Object.keys(categoryProportions).length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Your Donation Impact by Category</h2>
-            <div className="space-y-3 mb-6">
+            <h2 className="text-xl font-bold mb-4">Your Donation Impact by Category</h2>
+            <div className="space-y-2 mb-4">
               {Object.entries(categoryProportions).map(([name, value]) => (
-                <div key={name} className="flex justify-between items-center border-b border-gray-100 py-2">
-                  <span className="capitalize font-medium text-gray-700">{name}</span>
-                  <span className="font-mono bg-gray-50 px-3 py-1 rounded text-gray-800">{value.toFixed(2)}%</span>
+                <div key={name} className="flex justify-between items-center text-sm">
+                  <span className="capitalize text-gray-700">{name}</span>
+                  <span className="font-mono">{value.toFixed(2)}%</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6" style={{ width: '100%', height: 300 }}>
+            <div className="mt-4" style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
@@ -291,13 +250,13 @@ export default function DonorDashboard() {
                       <Cell key={`cell-${key}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => `${value.toFixed(2)}%`}
-                    contentStyle={{ 
+                    contentStyle={{
                       backgroundColor: 'white',
                       border: '1px solid #e5e7eb',
                       borderRadius: '0.375rem',
-                      padding: '0.5rem'
+                      padding: '0.5rem',
                     }}
                   />
                 </PieChart>
