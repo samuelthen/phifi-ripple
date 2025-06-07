@@ -11,7 +11,7 @@ export default function DonorDashboard() {
   const [userWallet, setUserWallet] = useState<any>(null);
   const [balance, setBalance] = useState<string>('0');
   const [donationNFTs, setDonationNFTs] = useState<any[]>([]);
-  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
+  const [impactMap, setImpactMap] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -26,25 +26,61 @@ export default function DonorDashboard() {
       if (walletBalance) setBalance(walletBalance);
       setDonationNFTs(receipts);
 
-      // ✅ Extract unique NGO IDs from the donation receipts
-      const ngoIdSet = new Set<string>();
+      // ✅ Build ngoId -> ngoName map from donation NFTs
+      const ngoIdToName: Record<string, string> = {};
       for (const nft of receipts) {
         try {
           const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-          if (metadata?.ngoId) {
-            ngoIdSet.add(metadata.ngoId);
+          if (metadata?.ngoId && metadata?.ngoName) {
+            ngoIdToName[metadata.ngoId] = metadata.ngoName;
           }
         } catch (err) {
           console.warn('Invalid NFT metadata for receipt', nft, err);
         }
       }
 
-      // ✅ Fetch all impacts for each NGO
-      const impactArrays = await Promise.all(
-        Array.from(ngoIdSet).map(ngoId => getImpactNFTs(ngoId))
+      // ✅ Fetch all impact NFTs and enrich them
+      const impactDict: Record<string, any> = {};
+
+      await Promise.all(
+        Object.entries(ngoIdToName).map(async ([ngoId, ngoName]) => {
+          const impacts = await getImpactNFTs(ngoId);
+          for (const nft of impacts) {
+            try {
+              const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+              if (metadata) {
+                impactDict[nft.NFTokenID] = {
+                  id: nft.NFTokenID,
+                  donationId: nft.NFTokenID,
+                  ngoId: metadata.ngoId || '',
+                  ngoName: ngoName,
+                  amount: metadata.amount || '0',
+                  category: metadata.category || 'unknown',
+                  recipient: metadata.purpose || 'Unknown',
+                  purpose: metadata.purpose || 'N/A',
+                  timestamp: metadata.timestamp || Date.now(),
+                  txHash: metadata.txHash || '',
+                };
+              }
+            } catch {
+              impactDict[nft.NFTokenID] = {
+                id: nft.NFTokenID,
+                donationId: nft.NFTokenID,
+                ngoId: '',
+                ngoName: 'Unknown NGO',
+                amount: '0',
+                category: 'unknown',
+                recipient: 'Unknown',
+                purpose: 'Unknown',
+                timestamp: Date.now(),
+                txHash: '',
+              };
+            }
+          }
+        })
       );
 
-      setImpactNFTs(impactArrays.flat());
+      setImpactMap(impactDict);
       setIsDataLoaded(true);
     } catch (err) {
       console.error('Error loading wallet data:', err);
@@ -153,38 +189,7 @@ export default function DonorDashboard() {
         </div>
 
         {/* Impact NFTs Section */}
-        <DonationImpact
-          impacts={impactNFTs.map(nft => {
-            try {
-              const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-              return {
-                id: nft.NFTokenID,
-                donationId: nft.NFTokenID,
-                ngoId: metadata?.ngoId || '',
-                ngoName: metadata?.recipient || 'Unknown NGO',
-                amount: metadata?.amount || '0',
-                category: metadata?.category || 'unknown',
-                recipient: metadata?.purpose || 'Unknown',
-                purpose: metadata?.purpose || 'N/A',
-                timestamp: metadata?.timestamp || Date.now(),
-                txHash: metadata?.txHash || '',
-              };
-            } catch {
-              return {
-                id: nft.NFTokenID,
-                donationId: nft.NFTokenID,
-                ngoId: '',
-                ngoName: 'Unknown NGO',
-                amount: '0',
-                category: 'unknown',
-                recipient: 'Unknown',
-                purpose: 'Unknown',
-                timestamp: Date.now(),
-                txHash: '',
-              };
-            }
-          })}
-        />
+        <DonationImpact impacts={Object.values(impactMap)} />
       </div>
     </div>
   );
