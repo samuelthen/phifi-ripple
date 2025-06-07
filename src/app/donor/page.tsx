@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getWalletBalance } from '@/lib/xrpl/wallet';
 import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
 import DonationImpact from '@/components/donor/DonationImpact';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function DonorDashboard() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function DonorDashboard() {
   const [balance, setBalance] = useState<string>('0');
   const [donationNFTs, setDonationNFTs] = useState<any[]>([]);
   const [impactMap, setImpactMap] = useState<Record<string, any>>({});
+  const [categoryProportions, setCategoryProportions] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -26,21 +28,26 @@ export default function DonorDashboard() {
       if (walletBalance) setBalance(walletBalance);
       setDonationNFTs(receipts);
 
-      // ✅ Build ngoId -> ngoName map from donation NFTs
       const ngoIdToName: Record<string, string> = {};
+      const donationTotals: Record<string, number> = {};
+
       for (const nft of receipts) {
         try {
           const metadata = nft.URI ? JSON.parse(nft.URI) : null;
           if (metadata?.ngoId && metadata?.ngoName) {
             ngoIdToName[metadata.ngoId] = metadata.ngoName;
+            const amount = parseFloat(metadata.amount);
+            if (!isNaN(amount)) {
+              donationTotals[metadata.ngoId] = (donationTotals[metadata.ngoId] || 0) + amount;
+            }
           }
         } catch (err) {
           console.warn('Invalid NFT metadata for receipt', nft, err);
         }
       }
 
-      // ✅ Fetch all impact NFTs and enrich them
       const impactDict: Record<string, any> = {};
+      const impactCategoryTotals: Record<string, Record<string, number>> = {};
 
       await Promise.all(
         Object.entries(ngoIdToName).map(async ([ngoId, ngoName]) => {
@@ -49,18 +56,26 @@ export default function DonorDashboard() {
             try {
               const metadata = nft.URI ? JSON.parse(nft.URI) : null;
               if (metadata) {
+                const category = metadata.category || 'unknown';
+                const amount = parseFloat(metadata.amount) || 0;
+
                 impactDict[nft.NFTokenID] = {
                   id: nft.NFTokenID,
                   donationId: nft.NFTokenID,
                   ngoId: metadata.ngoId || '',
                   ngoName: ngoName,
                   amount: metadata.amount || '0',
-                  category: metadata.category || 'unknown',
+                  category,
                   recipient: metadata.purpose || 'Unknown',
                   purpose: metadata.purpose || 'N/A',
                   timestamp: metadata.timestamp || Date.now(),
                   txHash: metadata.txHash || '',
                 };
+
+                if (!impactCategoryTotals[ngoId]) {
+                  impactCategoryTotals[ngoId] = {};
+                }
+                impactCategoryTotals[ngoId][category] = (impactCategoryTotals[ngoId][category] || 0) + amount;
               }
             } catch {
               impactDict[nft.NFTokenID] = {
@@ -80,7 +95,18 @@ export default function DonorDashboard() {
         })
       );
 
+      const totalDonation = Object.values(donationTotals).reduce((sum, val) => sum + val, 0);
+      const weightedCategoryTotals: Record<string, number> = {};
+
+      for (const [ngoId, categories] of Object.entries(impactCategoryTotals)) {
+        const weight = (donationTotals[ngoId] || 0) / totalDonation;
+        for (const [category, amount] of Object.entries(categories)) {
+          weightedCategoryTotals[category] = (weightedCategoryTotals[category] || 0) + amount * weight;
+        }
+      }
+
       setImpactMap(impactDict);
+      setCategoryProportions(weightedCategoryTotals);
       setIsDataLoaded(true);
     } catch (err) {
       console.error('Error loading wallet data:', err);
@@ -139,7 +165,6 @@ export default function DonorDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Donation Receipts Section */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Donation Receipts</h2>
@@ -188,8 +213,31 @@ export default function DonorDashboard() {
           )}
         </div>
 
-        {/* Impact NFTs Section */}
         <DonationImpact impacts={Object.values(impactMap)} />
+
+        {Object.keys(categoryProportions).length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4">Donation Usage Breakdown</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={Object.entries(categoryProportions).map(([name, value]) => ({ name, value }))}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  fill="#8884d8"
+                  label
+                >
+                  {Object.entries(categoryProportions).map(([key], index) => (
+                    <Cell key={`cell-${index}`} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );
