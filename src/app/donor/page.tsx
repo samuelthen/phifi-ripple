@@ -157,17 +157,17 @@ export default function DonorDashboard() {
   if (!userWallet || !isDataLoaded) return null;
 
   return (
-    <div className="max-w-7xl mx-auto mt-8 p-6 bg-gray-900 min-h-screen text-white">
+    <div className="max-w-7xl mx-auto mt-8 p-6">
       <div className="grid grid-cols-3 gap-6 mb-6">
         {/* Donation Impact Section - Top Left */}
         {Object.keys(categoryProportions).length > 0 && (
-          <div className="col-span-2 bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-white">✨ Impact Analytics Dashboard</h2>
+          <div className="col-span-2 bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4">✨ Impact Analytics Dashboard</h2>
             <div className="space-y-2 mb-4">
               {Object.entries(categoryProportions).map(([name, value]) => (
                 <div key={name} className="flex justify-between items-center text-sm">
-                  <span className="capitalize text-gray-300">{name}</span>
-                  <span className="font-mono text-indigo-400">{value.toFixed(2)}%</span>
+                  <span className="capitalize text-gray-700">{name}</span>
+                  <span className="font-mono">{value.toFixed(2)}%</span>
                 </div>
               ))}
             </div>
@@ -191,11 +191,10 @@ export default function DonorDashboard() {
                   <Tooltip
                     formatter={(value: number) => `${value.toFixed(2)}%`}
                     contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #374151',
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
                       borderRadius: '0.375rem',
                       padding: '0.5rem',
-                      color: '#e5e7eb'
                     }}
                   />
                 </PieChart>
@@ -205,21 +204,21 @@ export default function DonorDashboard() {
         )}
 
         {/* Wallet Info Section - Top Right */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-          <h1 className="text-2xl font-bold mb-4 text-white">🌐 Web3 Donor Portal</h1>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold mb-4">🌐 Web3 Donor Portal</h1>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <p className="text-sm text-gray-400">Your Wallet Address</p>
-              <p className="font-mono break-all text-gray-300">{userWallet.address}</p>
+              <p className="text-sm text-gray-600">Your Wallet Address</p>
+              <p className="font-mono break-all">{userWallet.address}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-400">XRP Balance</p>
-              <p className="font-bold text-xl text-indigo-400">{balance} XRP</p>
+              <p className="text-sm text-gray-600">XRP Balance</p>
+              <p className="font-bold text-xl">{balance} XRP</p>
             </div>
             <div className="mt-4">
               <button
                 onClick={() => router.push('/donate')}
-                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 transition-colors"
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
               >
                 🎯 New Impact Donation
               </button>
@@ -230,20 +229,20 @@ export default function DonorDashboard() {
         {/* Receipts and Impact Lists - Bottom */}
         <div className="col-span-3 grid grid-cols-3 gap-6">
           {/* Impact List Section */}
-          <div className="col-span-2 bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-white">🌟 Real-Time Impact Tracker</h2>
+          <div className="col-span-2 bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4">🌟 Real-Time Impact Tracker</h2>
             <div className="max-h-[500px] overflow-y-auto">
               <DonationImpact impacts={Object.values(impactMap).sort((a, b) => b.timestamp - a.timestamp)} />
             </div>
           </div>
 
           {/* Donation Receipts Section */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-white">📜 On-Chain Donation History</h2>
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold mb-4">📜 On-Chain Donation History</h2>
             {error ? (
-              <p className="text-red-400">{error}</p>
+              <p className="text-red-600">{error}</p>
             ) : donationNFTs.length === 0 ? (
-              <p className="text-gray-400">No donation receipts found.</p>
+              <p>No donation receipts found.</p>
             ) : (
               <div className="space-y-4 max-h-[500px] overflow-y-auto">
                 {[...donationNFTs]
@@ -256,26 +255,26 @@ export default function DonorDashboard() {
                     try {
                       const metadata = nft.URI ? JSON.parse(nft.URI) : null;
                       return (
-                        <div key={nft.NFTokenID} className="border border-gray-700 rounded-lg p-4 hover:bg-gray-700 transition-colors">
+                        <div key={nft.NFTokenID} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-semibold text-white">{metadata?.ngoName || 'Unknown NGO'}</h3>
-                              <p className="text-sm text-gray-400">
+                              <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                              <p className="text-sm text-gray-600">
                                 {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
                               </p>
                             </div>
-                            <span className="px-2 py-1 bg-green-900 text-green-300 rounded-full text-xs font-medium">
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                               {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
                             </span>
                           </div>
                           <details className="mt-2">
-                            <summary className="cursor-pointer text-sm text-indigo-400 hover:text-indigo-300">
+                            <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800">
                               View Details
                             </summary>
                             {metadata && (
-                              <div className="mt-2 pl-4 border-l-2 border-indigo-700">
-                                <p className="text-sm text-gray-400">Purpose</p>
-                                <p className="text-sm text-gray-300">{metadata.purpose}</p>
+                              <div className="mt-2 pl-4 border-l-2 border-indigo-200">
+                                <p className="text-sm text-gray-600">Purpose</p>
+                                <p className="text-sm">{metadata.purpose}</p>
                               </div>
                             )}
                           </details>
