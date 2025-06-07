@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
-import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
+import { getDonorNFTs, getImpactNFTs, mintNGOReceipt } from '@/lib/xrpl/nft';
 import DonationImpact from '@/components/donor/DonationImpact';
 
 const recipient = {
@@ -85,25 +85,29 @@ export default function NgoDashboard() {
 
     console.log('Preparing to send XRP with data:');
     console.log('Sender:', userWallet.address);
-    console.log('Secret present:', !!userWallet.secret);
     console.log('Recipient:', recipient.wallet_address);
     console.log('Amount:', amount);
     console.log('Purpose:', selectedPurpose);
 
     try {
-      const tx = await sendXRP(userWallet.secret, recipient.wallet_address, amount, selectedPurpose);
+      const txHash = await sendXRP(userWallet.secret, recipient.wallet_address, amount, selectedPurpose);
 
-      alert(`Sent ${amount} XRP to ${recipient.name}. Tx Hash: ${tx || tx}`);
+      await mintNGOReceipt(userWallet.secret, {
+        amount,
+        purpose: selectedPurpose,
+        recipient: recipient.name,
+        ngoId: userWallet.username || userWallet.address,
+        ngoName: 'Your NGO Name', // Optionally replace with a real value
+        txHash,
+        timestamp: Date.now(),
+        category: recipient.category,
+      });
+
+      alert(`Sent ${amount} XRP to ${recipient.name}. NFT receipt minted.`);
       await loadWalletData(userWallet);
     } catch (err: any) {
       console.error('Error sending funds:', err);
-
-      let errorMessage = 'Unknown error';
-      if (err?.message) errorMessage = err.message;
-      else if (typeof err === 'string') errorMessage = err;
-      else if (typeof err === 'object') errorMessage = JSON.stringify(err, null, 2);
-
-      alert(`Error sending funds:\n${errorMessage}`);
+      alert(`Error sending funds:\n${err?.message || JSON.stringify(err)}`);
     } finally {
       setSending(false);
     }
@@ -138,7 +142,6 @@ export default function NgoDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Donation Receipts */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4">Donation Receipts</h2>
           {error ? (
@@ -180,7 +183,6 @@ export default function NgoDashboard() {
           )}
         </div>
 
-        {/* Send Funds Section */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4">Send Funds to Field Team</h2>
 
@@ -214,7 +216,6 @@ export default function NgoDashboard() {
           </button>
         </div>
 
-        {/* Impact NFTs */}
         <DonationImpact
           impacts={impactNFTs.map(nft => {
             try {
