@@ -2,10 +2,44 @@
 
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import { useState, useEffect } from 'react';
+import { getDonorNFTs } from '@/lib/xrpl/nft';
 import NGOList from '@/components/NGOList';
 
 export default function HomePage() {
   const router = useRouter();
+  const [totalDonations, setTotalDonations] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const calculateTotalDonations = async () => {
+      try {
+        const nfts = await getDonorNFTs('rNau67oquP2Ukw7Vs54YgjzfsEM5esgxXF');
+        const total = nfts.reduce((sum, nft) => {
+          try {
+            const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+            return sum + (parseFloat(metadata?.amount) || 0);
+          } catch (e) {
+            return sum;
+          }
+        }, 0);
+        setTotalDonations(total);
+      } catch (error) {
+        console.error('Error calculating total donations:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    calculateTotalDonations();
+  }, []);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

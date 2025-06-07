@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getRegisteredNGOs } from '@/lib/xrpl/ngo';
+import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
 
 interface NGO {
   id: string;
@@ -10,18 +11,69 @@ interface NGO {
   description: string;
   created_at: string;
   total_donations?: number;
-  total_projects?: number;
 }
 
 export default function NGOList() {
   const [ngos, setNGOs] = useState<NGO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const loadNGOs = async () => {
       try {
         const registeredNGOs = await getRegisteredNGOs();
-        setNGOs(registeredNGOs);
+        
+        // Calculate total donations for each NGO
+        const ngosWithDonations = await Promise.all(
+          registeredNGOs.map(async (ngo) => {
+            // Get both donor and impact NFTs
+            const [donorNFTs, impactNFTs] = await Promise.all([
+              getDonorNFTs(ngo.wallet_address),
+              getImpactNFTs(ngo.wallet_address)
+            ]);
+
+            // Calculate total from donor NFTs
+            const donorTotal = donorNFTs.reduce((sum, nft) => {
+              try {
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                if (metadata?.amount) {
+                  const amount = parseFloat(metadata.amount);
+                  return sum + (isNaN(amount) ? 0 : amount);
+                }
+                return sum;
+              } catch (e) {
+                console.warn('Error parsing donor NFT metadata:', e);
+                return sum;
+              }
+            }, 0);
+
+            // Calculate total from impact NFTs
+            const impactTotal = impactNFTs.reduce((sum, nft) => {
+              try {
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                if (metadata?.amount) {
+                  const amount = parseFloat(metadata.amount);
+                  return sum + (isNaN(amount) ? 0 : amount);
+                }
+                return sum;
+              } catch (e) {
+                console.warn('Error parsing impact NFT metadata:', e);
+                return sum;
+              }
+            }, 0);
+
+            // Combine both totals
+            const totalDonations = donorTotal + impactTotal;
+
+            return {
+              ...ngo,
+              total_donations: totalDonations
+            };
+          })
+        );
+
+        setNGOs(ngosWithDonations);
       } catch (error) {
         console.error('Error loading NGOs:', error);
       } finally {
@@ -31,6 +83,11 @@ export default function NGOList() {
 
     loadNGOs();
   }, []);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -59,20 +116,13 @@ export default function NGOList() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {ngo.name}
             </h3>
-            <p className="text-gray-500 text-sm mb-4 break-all">
-              {ngo.wallet_address}
-            </p>
             <p className="text-gray-600 text-sm mb-4">
               {ngo.description}
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Total Donations</span>
-                <span className="font-medium">{ngo.total_donations || 0} XRP</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Impact Projects</span>
-                <span className="font-medium">{ngo.total_projects || 0}</span>
+                <span className="font-medium">{ngo.total_donations?.toFixed(2) || '0.00'} XRP</span>
               </div>
             </div>
             <button
