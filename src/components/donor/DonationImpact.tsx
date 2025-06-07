@@ -53,8 +53,8 @@ export default function DonationImpact({ impacts }: DonationImpactProps) {
                 <p className="font-medium">{impact.amount} XRP</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Recipient</p>
-                <p className="font-medium">{impact.recipient}</p>
+                <p className="text-sm text-gray-600">Purpose</p>
+                <p className="font-medium capitalize">{impact.recipient}</p>
               </div>
             </div>
             <div className="mt-2">

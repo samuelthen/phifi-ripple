@@ -6,12 +6,32 @@ import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
 import { getDonorNFTs, getImpactNFTs, mintNGOReceipt } from '@/lib/xrpl/nft';
 import DonationImpact from '@/components/donor/DonationImpact';
 
-const recipient = {
-  id: '1',
-  name: 'Field Operations Team',
-  wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
-  category: 'operations',
-};
+export const mockRecipients = [
+  {
+    id: '1',
+    name: 'Field Operations Team',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'operations',
+  },
+  {
+    id: '2',
+    name: 'Medical Supplies',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'supplies',
+  },
+  {
+    id: '3',
+    name: 'Local Community Center',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'community',
+  },
+  {
+    id: '4',
+    name: 'Emergency Response Team',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'emergency',
+  },
+];
 
 export default function NgoDashboard() {
   const router = useRouter();
@@ -26,6 +46,7 @@ export default function NgoDashboard() {
   const [selectedPurpose, setSelectedPurpose] = useState<'food' | 'wages' | 'transport' | 'supplies'>('food');
   const [amount, setAmount] = useState<string>('10');
   const [sending, setSending] = useState(false);
+  const [recipient, setRecipient] = useState(mockRecipients[0]);
 
   const loadWalletData = useCallback(async (wallet: any) => {
     try {
@@ -83,12 +104,6 @@ export default function NgoDashboard() {
 
     setSending(true);
 
-    console.log('Preparing to send XRP with data:');
-    console.log('Sender:', userWallet.address);
-    console.log('Recipient:', recipient.wallet_address);
-    console.log('Amount:', amount);
-    console.log('Purpose:', selectedPurpose);
-
     try {
       const txHash = await sendXRP(userWallet.secret, recipient.wallet_address, amount, selectedPurpose);
 
@@ -97,7 +112,7 @@ export default function NgoDashboard() {
         purpose: selectedPurpose,
         recipient: recipient.name,
         ngoId: userWallet.username || userWallet.address,
-        ngoName: 'Your NGO Name', // Optionally replace with a real value
+        ngoName: 'Your NGO Name',
         txHash,
         timestamp: Date.now(),
         category: recipient.category,
@@ -143,48 +158,23 @@ export default function NgoDashboard() {
 
       <div className="grid grid-cols-1 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Donation Receipts</h2>
-          {error ? (
-            <p className="text-red-600">{error}</p>
-          ) : donationNFTs.length === 0 ? (
-            <p>No donation receipts found.</p>
-          ) : (
-            <div className="space-y-4">
-              {donationNFTs.map((nft) => {
-                try {
-                  const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-                  return (
-                    <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-semibold">{metadata?.donorName || 'Anonymous Donor'}</h3>
-                          <p className="text-sm text-gray-600">
-                            {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                          </p>
-                        </div>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
-                        </span>
-                      </div>
-                      {metadata && (
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-600">Purpose</p>
-                          <p className="text-sm">{metadata.purpose}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                } catch (err) {
-                  console.error('Error parsing NFT metadata:', err);
-                  return null;
-                }
-              })}
-            </div>
-          )}
-        </div>
+          <h2 className="text-xl font-bold mb-4">Send Funds</h2>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Send Funds to Field Team</h2>
+          <label className="block mb-2 text-sm font-medium">Select Recipient</label>
+          <select
+            value={recipient.id}
+            onChange={(e) => {
+              const selected = mockRecipients.find(r => r.id === e.target.value);
+              if (selected) setRecipient(selected);
+            }}
+            className="mb-4 p-2 border rounded-md w-full"
+          >
+            {mockRecipients.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
 
           <label className="block mb-2 text-sm font-medium">Select Purpose</label>
           <select
@@ -224,10 +214,10 @@ export default function NgoDashboard() {
                 id: nft.NFTokenID,
                 donationId: nft.NFTokenID,
                 ngoId: metadata?.ngoId || '',
-                ngoName: metadata?.ngoName || 'Unknown NGO',
+                ngoName: metadata?.recipient || 'Unknown Recipient',
                 amount: metadata?.amount || '0',
                 category: metadata?.category || 'unknown',
-                recipient: metadata?.recipient || 'Unknown',
+                recipient: metadata?.purpose || 'N/A', // Swapped with purpose
                 purpose: metadata?.purpose || 'N/A',
                 timestamp: metadata?.timestamp || Date.now(),
                 txHash: metadata?.txHash || '',
@@ -237,7 +227,7 @@ export default function NgoDashboard() {
                 id: nft.NFTokenID,
                 donationId: nft.NFTokenID,
                 ngoId: '',
-                ngoName: 'Unknown NGO',
+                ngoName: 'Unknown Recipient',
                 amount: '0',
                 category: 'unknown',
                 recipient: 'Unknown',
