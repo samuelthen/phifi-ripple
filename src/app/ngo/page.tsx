@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
+import { generateXrplDid } from '@/lib/xrpl/did';
 import { recipientWallets } from '@/data/mockData';
 
 export default function NGODashboard() {
   const router = useRouter();
   const [userWallet, setUserWallet] = useState<any>(null);
   const [balance, setBalance] = useState<string>('0');
+  const [did, setDid] = useState<string>('');
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'food' | 'wages' | 'transport' | 'supplies'>('food');
@@ -30,6 +32,7 @@ export default function NGODashboard() {
     }
 
     setUserWallet(wallet);
+    setDid(generateXrplDid(wallet.address));
     loadWalletData(wallet.address);
   }, [router]);
 
@@ -101,6 +104,8 @@ export default function NGODashboard() {
             <div>
               <p className="text-sm font-medium text-gray-500">Address</p>
               <p className="mt-1 text-sm text-gray-900 break-all">{userWallet.address}</p>
+              <p className="mt-2 text-sm font-medium text-gray-500">DID</p>
+              <p className="mt-1 text-sm text-gray-900 break-all">{did}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Balance</p>
