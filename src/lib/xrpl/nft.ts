@@ -11,6 +11,7 @@ export type NFTMetadata = {
   category?: string;
   recipient?: string;
   txHash?: string;
+  wallet_address?: string;
 };
 
 /**
@@ -41,20 +42,24 @@ export async function mintDonationReceipt(
 }
 
 /**
- * Mint an NGO impact NFT (NFTokenTaxon = 1)
- * Uses the exact same metadata shape as donor receipts
+ * Mint an NGO receipt NFT (NFTokenTaxon = 1)
  */
-export async function mintNGOReceipt(secret: string, metadata: NFTMetadata): Promise<string> {
+export async function mintNGOReceipt(
+  secret: string,
+  metadata: NFTMetadata
+): Promise<string> {
   const client = await getTestnetClient();
   const wallet = Wallet.fromSecret(secret);
 
+  // Convert metadata to hex
   const metadataHex = Buffer.from(JSON.stringify(metadata)).toString('hex');
 
+  // Mint NFT with taxon 1 to distinguish NGO-issued receipts
   const tx: NFTokenMint = {
     TransactionType: 'NFTokenMint',
     Account: wallet.address,
     URI: metadataHex,
-    Flags: 8,
+    Flags: 8, // transferable
     NFTokenTaxon: 1,
   };
 
@@ -62,6 +67,7 @@ export async function mintNGOReceipt(secret: string, metadata: NFTMetadata): Pro
   const response = await client.submitAndWait(autofilled, { wallet });
   return response.result.hash;
 }
+
 
 // Base NFT fetcher
 export async function getNFTs(address: string): Promise<any[]> {

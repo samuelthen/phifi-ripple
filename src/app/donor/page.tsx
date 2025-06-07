@@ -161,7 +161,7 @@ export default function DonorDashboard() {
                 id: nft.NFTokenID,
                 donationId: nft.NFTokenID,
                 ngoId: metadata?.ngoId || '',
-                ngoName: metadata?.ngoName || 'Unknown NGO',
+                ngoName: metadata?.recipient || 'Unknown NGO',
                 amount: metadata?.amount || '0',
                 category: metadata?.category || 'unknown',
                 recipient: metadata?.purpose || 'Unknown',
