@@ -47,6 +47,13 @@ export default function Navbar() {
               </Link>
               <span className="text-gray-300">|</span>
               <Link
+                href="/ngos"
+                className="border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                Browse Our NGOs
+              </Link>
+              <span className="text-gray-300">|</span>
+              <Link
                 href="/donor"
                 onClick={handleDashboardClick}
                 className="border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
