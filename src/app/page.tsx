@@ -1,4 +1,4 @@
-import CreateAccountForm from '@/components/forms/CreateAccountForm';
+import AuthForm from '@/components/auth/AuthForm';
 
 export default function Home() {
   return (
@@ -14,7 +14,7 @@ export default function Home() {
         </div>
 
         <div className="mt-12">
-          <CreateAccountForm />
+          <AuthForm />
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,8 +1,10 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendXRP } from '@/lib/xrpl/wallet';
 import { mintDonationReceipt } from '@/lib/xrpl/nft';
-import { verifiedNGOs } from '@/data/mockData';
+import { getVerifiedNGOs, NGO } from '@/lib/supabase/client';
 
 export default function DonationForm() {
   const router = useRouter();
@@ -12,6 +14,7 @@ export default function DonationForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userWallet, setUserWallet] = useState<any>(null);
+  const [ngos, setNGOs] = useState<NGO[]>([]);
 
   useEffect(() => {
     const storedWallet = localStorage.getItem('userWallet');
@@ -20,7 +23,17 @@ export default function DonationForm() {
       return;
     }
     setUserWallet(JSON.parse(storedWallet));
+    loadNGOs();
   }, [router]);
+
+  const loadNGOs = async () => {
+    try {
+      const verifiedNGOs = await getVerifiedNGOs();
+      setNGOs(verifiedNGOs);
+    } catch (err) {
+      setError('Failed to load NGOs');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +45,7 @@ export default function DonationForm() {
         throw new Error('Wallet not found');
       }
 
-      const ngo = verifiedNGOs.find(n => n.id === selectedNGO);
+      const ngo = ngos.find(n => n.id === selectedNGO);
       if (!ngo) {
         throw new Error('Selected NGO not found');
       }
@@ -40,7 +53,7 @@ export default function DonationForm() {
       // Send XRP to NGO
       const txHash = await sendXRP(
         userWallet.secret,
-        ngo.walletAddress,
+        ngo.wallet_address,
         amount,
         purpose
       );
@@ -85,9 +98,9 @@ export default function DonationForm() {
             required
           >
             <option value="">Select an NGO</option>
-            {verifiedNGOs.map((ngo) => (
+            {ngos.map((ngo) => (
               <option key={ngo.id} value={ngo.id}>
-                {ngo.name}
+                {ngo.name} - {ngo.category}
               </option>
             ))}
           </select>
@@ -132,7 +145,7 @@ export default function DonationForm() {
           disabled={isLoading}
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isLoading ? 'Processing Donation...' : 'Donate'}
+          {isLoading ? 'Processing...' : 'Make Donation'}
         </button>
       </form>
     </div>
