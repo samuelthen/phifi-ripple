@@ -1,0 +1,65 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+export default function Navbar() {
+  const router = useRouter();
+  const userWallet = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userWallet') || 'null') : null;
+
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    if (!userWallet) {
+      e.preventDefault();
+      router.push('/');
+    } else {
+      router.push('/donor');
+    }
+  };
+
+  const formatWalletAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  return (
+    <nav className="bg-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-2xl font-bold text-indigo-600">
+                🌊 Phifi
+              </Link>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link
+                href="/"
+                className="border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                Home
+              </Link>
+              <Link
+                href="/donor"
+                onClick={handleDashboardClick}
+                className="border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                Dashboard
+              </Link>
+            </div>
+          </div>
+          <div className="flex items-center">
+            {userWallet && (
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-500">
+                  <span className="font-medium text-indigo-600">XRPL Wallet:</span>{' '}
+                  {formatWalletAddress(userWallet.address)}
+                </div>
+                
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+} 
