@@ -163,11 +163,12 @@ export default function DonorDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="max-w-7xl mx-auto mt-8 p-6">
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          {/* Donation Impact Section - Top Left */}
+      <div className="max-w-7xl mx-auto mt-8 p-4 sm:p-6">
+        {/* Top Section - Impact Analytics and Wallet Info */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Donation Impact Section */}
           {Object.keys(categoryProportions).length > 0 && (
-            <div className="col-span-2 bg-white rounded-lg shadow-lg p-6">
+            <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
               <h2 className="text-xl font-bold mb-4">✨ Impact Analytics Dashboard</h2>
               <div className="space-y-2 mb-4">
                 {Object.entries(categoryProportions).map(([name, value]) => (
@@ -209,13 +210,13 @@ export default function DonorDashboard() {
             </div>
           )}
 
-          {/* Wallet Info Section - Top Right */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          {/* Wallet Info Section */}
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
             <h1 className="text-2xl font-bold mb-4">🌐 Web3 Donor Portal</h1>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Your Wallet Address</p>
-                <p className="font-mono break-all">{userWallet.address}</p>
+                <p className="font-mono text-sm break-all">{userWallet.address}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">XRP Balance</p>
@@ -231,68 +232,68 @@ export default function DonorDashboard() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Receipts and Impact Lists - Bottom */}
-          <div className="col-span-3 grid grid-cols-3 gap-6">
-            {/* Impact List Section */}
-            <div className="col-span-2 bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">🌟 Real-Time Impact Tracker</h2>
-              <div className="max-h-[500px] overflow-y-auto">
-                <DonationImpact impacts={Object.values(impactMap).sort((a, b) => b.timestamp - a.timestamp)} />
-              </div>
+        {/* Bottom Section - Impact Tracker and Donation History */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Impact List Section */}
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <h2 className="text-xl font-bold mb-4">🌟 Real-Time Impact Tracker</h2>
+            <div className="max-h-[500px] overflow-y-auto">
+              <DonationImpact impacts={Object.values(impactMap).sort((a, b) => b.timestamp - a.timestamp)} />
             </div>
+          </div>
 
-            {/* Donation Receipts Section */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">📜 On-Chain Donation History</h2>
-              {error ? (
-                <p className="text-red-600">{error}</p>
-              ) : donationNFTs.length === 0 ? (
-                <p>No donation receipts found.</p>
-              ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                  {[...donationNFTs]
-                    .sort((a, b) => {
-                      const dateA = a.URI ? JSON.parse(a.URI)?.timestamp || 0 : 0;
-                      const dateB = b.URI ? JSON.parse(b.URI)?.timestamp || 0 : 0;
-                      return dateB - dateA;
-                    })
-                    .map((nft) => {
-                      try {
-                        const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-                        return (
-                          <div key={nft.NFTokenID} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
-                                <p className="text-sm text-gray-600">
-                                  {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                                </p>
-                              </div>
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                                {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
-                              </span>
-                            </div>
-                            <details className="mt-2">
-                              <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800">
-                                View Details
-                              </summary>
-                              {metadata && (
-                                <div className="mt-2 pl-4 border-l-2 border-indigo-200">
-                                  <p className="text-sm text-gray-600">Purpose</p>
-                                  <p className="text-sm">{metadata.purpose}</p>
-                                </div>
-                              )}
-                            </details>
+          {/* Donation Receipts Section */}
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <h2 className="text-xl font-bold mb-4">📜 On-Chain Donation History</h2>
+            {error ? (
+              <p className="text-red-600">{error}</p>
+            ) : donationNFTs.length === 0 ? (
+              <p className="text-gray-500">No donation receipts found.</p>
+            ) : (
+              <div className="space-y-4">
+                {donationNFTs.map((nft) => {
+                  try {
+                    const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
+                    return (
+                      <div key={nft.NFTokenID} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                            <p className="text-sm text-gray-600">
+                              {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
+                            </p>
                           </div>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    })}
-                </div>
-              )}
-            </div>
+                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                            {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
+                          </span>
+                        </div>
+                        {metadata && (
+                          <>
+                            <div className="mt-2">
+                              <p className="text-sm text-gray-600">Purpose</p>
+                              <p className="text-sm">{metadata.purpose}</p>
+                            </div>
+                            <div className="mt-2">
+                              <p className="text-sm text-gray-600">Category</p>
+                              <p className="text-sm">{metadata.category}</p>
+                            </div>
+                            <div className="mt-2">
+                              <p className="text-sm text-gray-600">Transaction</p>
+                              <p className="font-mono text-xs break-all">{metadata.txHash}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  } catch (err) {
+                    console.error('Error parsing NFT metadata:', err, 'NFT:', nft);
+                    return null;
+                  }
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
