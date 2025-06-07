@@ -1,19 +1,49 @@
 'use client';
 
-import type { DonationImpact } from '@/data/mockData';
+import { useMemo } from 'react';
+import { DonutChart } from '@tremor/react';
+
+interface ImpactMetric {
+  category: string;
+  amount: string;
+  percentage: number;
+  description: string;
+}
 
 interface DonationImpactProps {
-  impacts: DonationImpact[];
+  impacts: {
+    id: string;
+    donationId: string;
+    ngoId: string;
+    ngoName: string;
+    amount: string;
+    category: string;
+    recipient: string;
+    timestamp: number;
+    txHash: string;
+    impactMetrics?: ImpactMetric[];
+  }[];
 }
 
 export default function DonationImpact({ impacts }: DonationImpactProps) {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  const impactData = useMemo(() => {
+    // Calculate total impact by category
+    const categoryTotals = impacts.reduce((acc, impact) => {
+      const amount = parseFloat(impact.amount);
+      acc[impact.category] = (acc[impact.category] || 0) + amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Convert to chart data format
+    return Object.entries(categoryTotals).map(([category, amount]) => ({
+      name: category,
+      value: amount,
+    }));
+  }, [impacts]);
+
+  const totalImpact = useMemo(() => {
+    return impacts.reduce((sum, impact) => sum + parseFloat(impact.amount), 0);
+  }, [impacts]);
 
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
@@ -35,34 +65,83 @@ export default function DonationImpact({ impacts }: DonationImpactProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-xl font-bold mb-4">Donation Impact</h2>
-      <div className="space-y-4">
-        {impacts.map((impact) => (
-          <div key={impact.id} className="border rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-semibold">{impact.ngoName}</h3>
-                <p className="text-sm text-gray-600">{formatDate(impact.timestamp)}</p>
-              </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(impact.category)}`}>
-                {impact.category}
-              </span>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Impact Distribution</h3>
+          <DonutChart
+            data={impactData}
+            category="value"
+            index="name"
+            valueFormatter={(value: number) => `${value.toFixed(2)} XRP`}
+            colors={['blue', 'green', 'emerald', 'purple', 'orange', 'yellow', 'indigo', 'pink', 'gray', 'red', 'teal']}
+          />
+        </div>
+
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Impact Summary</h3>
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Total Impact</p>
+              <p className="text-2xl font-bold">{totalImpact.toFixed(2)} XRP</p>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <div>
-                <p className="text-sm text-gray-600">Amount</p>
-                <p className="font-medium">{impact.amount} XRP</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Recipient</p>
-                <p className="font-medium">{impact.recipient}</p>
-              </div>
-            </div>
-            <div className="mt-2">
-              <p className="text-sm text-gray-600">Transaction</p>
-              <p className="font-mono text-xs break-all">{impact.txHash}</p>
+
+            <div className="space-y-2">
+              {impactData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.name)}`}>
+                    {item.name}
+                  </span>
+                  <span className="font-medium">{item.value.toFixed(2)} XRP</span>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-4">Recent Impact Activities</h3>
+        <div className="space-y-4">
+          {impacts.map((impact) => (
+            <div key={impact.id} className="border rounded-lg p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h4 className="font-semibold">{impact.ngoName}</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(impact.timestamp).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(impact.category)}`}>
+                  {impact.category}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-sm text-gray-600">Amount</p>
+                  <p className="font-medium">{impact.amount} XRP</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Recipient</p>
+                  <p className="font-medium">{impact.recipient}</p>
+                </div>
+              </div>
+              {impact.impactMetrics && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">Impact Details</p>
+                  <div className="mt-1 space-y-1">
+                    {impact.impactMetrics.map((metric, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="font-medium">{metric.category}:</span>{' '}
+                        {metric.description} ({metric.percentage}%)
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

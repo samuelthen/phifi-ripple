@@ -64,6 +64,7 @@ export default function DonationForm() {
         ngoId: ngo.id,
         ngoName: ngo.name,
         purpose,
+        category: ngo.category,
         txHash,
         timestamp: Date.now(),
         impactWindow: 12 * 30 * 24 * 60 * 60 * 1000, // 12 months in milliseconds

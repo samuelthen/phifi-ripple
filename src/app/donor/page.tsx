@@ -130,7 +130,8 @@ export default function DonorDashboard() {
             <div className="space-y-4">
               {donationNFTs.map((nft) => {
                 try {
-                  const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                  const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
+                  console.log('Parsed donation NFT metadata:', metadata);
                   return (
                     <div key={nft.NFTokenID} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
@@ -145,15 +146,25 @@ export default function DonorDashboard() {
                         </span>
                       </div>
                       {metadata && (
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-600">Purpose</p>
-                          <p className="text-sm">{metadata.purpose}</p>
-                        </div>
+                        <>
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-600">Purpose</p>
+                            <p className="text-sm">{metadata.purpose}</p>
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-600">Category</p>
+                            <p className="text-sm">{metadata.category}</p>
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm text-gray-600">Transaction</p>
+                            <p className="font-mono text-xs break-all">{metadata.txHash}</p>
+                          </div>
+                        </>
                       )}
                     </div>
                   );
                 } catch (err) {
-                  console.error('Error parsing NFT metadata:', err);
+                  console.error('Error parsing NFT metadata:', err, 'NFT:', nft);
                   return null;
                 }
               })}
@@ -163,10 +174,11 @@ export default function DonorDashboard() {
 
         <DonationImpact impacts={impactNFTs.map(nft => {
           try {
-            const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+            const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
+            console.log('Parsed impact NFT metadata:', metadata);
             return {
               id: nft.NFTokenID,
-              donationId: nft.NFTokenID,
+              donationId: metadata?.donationId || nft.NFTokenID,
               ngoId: metadata?.ngoId || '',
               ngoName: metadata?.ngoName || 'Unknown NGO',
               amount: metadata?.amount || '0',
@@ -174,9 +186,10 @@ export default function DonorDashboard() {
               recipient: metadata?.recipient || 'Unknown',
               timestamp: metadata?.timestamp || Date.now(),
               txHash: metadata?.txHash || '',
+              impactMetrics: metadata?.impactMetrics || []
             };
           } catch (err) {
-            console.error('Error parsing impact NFT metadata:', err);
+            console.error('Error parsing impact NFT metadata:', err, 'NFT:', nft);
             return {
               id: nft.NFTokenID,
               donationId: nft.NFTokenID,
@@ -187,6 +200,7 @@ export default function DonorDashboard() {
               recipient: 'Unknown',
               timestamp: Date.now(),
               txHash: '',
+              impactMetrics: []
             };
           }
         })} />

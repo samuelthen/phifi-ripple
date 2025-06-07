@@ -77,32 +77,57 @@ export async function sendXRP(
   memo?: string
 ): Promise<string> {
   const client = await createXRPLClient();
+  let retries = 3;
 
-  try {
-    const wallet = XRPLWallet.fromSeed(fromSecret);
-    
-    const prepared = await client.autofill({
-      TransactionType: 'Payment',
-      Account: wallet.address,
-      Amount: xrpToDrops(amount),
-      Destination: toAddress,
-      ...(memo && {
-        Memos: [
-          {
-            Memo: {
-              MemoData: Buffer.from(memo).toString('hex').toUpperCase(),
-              MemoFormat: Buffer.from('text/plain').toString('hex').toUpperCase(),
+  while (retries > 0) {
+    try {
+      const wallet = XRPLWallet.fromSeed(fromSecret);
+      
+      // Get the current ledger index
+      const serverInfo = await client.request({
+        command: 'server_info'
+      });
+      const currentLedgerIndex = serverInfo.result.info.complete_ledgers.split('-').pop();
+      
+      const prepared = await client.autofill({
+        TransactionType: 'Payment',
+        Account: wallet.address,
+        Amount: xrpToDrops(amount),
+        Destination: toAddress,
+        LastLedgerSequence: Number(currentLedgerIndex) + 10, // Give 10 ledgers for the transaction to complete
+        ...(memo && {
+          Memos: [
+            {
+              Memo: {
+                MemoData: Buffer.from(memo).toString('hex').toUpperCase(),
+                MemoFormat: Buffer.from('text/plain').toString('hex').toUpperCase(),
+              },
             },
-          },
-        ],
-      }),
-    });
+          ],
+        }),
+      });
 
-    const signed = wallet.sign(prepared);
-    const result = await client.submitAndWait(signed.tx_blob);
+      const signed = wallet.sign(prepared);
+      const result = await client.submitAndWait(signed.tx_blob);
 
-    return result.result.hash;
-  } finally {
-    await client.disconnect();
+      if (result.result.validated) {
+        return result.result.hash;
+      }
+
+      // If not validated, retry
+      retries--;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      }
+    } catch (error) {
+      console.error(`Error sending XRP (attempt ${4 - retries}/3):`, error);
+      retries--;
+      if (retries === 0) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    }
   }
+
+  throw new Error('Failed to send XRP after multiple attempts');
 } 
