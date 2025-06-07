@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
-import { recipientWallets } from '@/data/mockData';
+import { mintImpactNFT, getImpactNFTs } from '@/lib/xrpl/nft';
+import { mockRecipients, transactionCategories } from '@/data/mockData';
 
 export default function NGODashboard() {
   const router = useRouter();
@@ -11,10 +12,11 @@ export default function NGODashboard() {
   const [balance, setBalance] = useState<string>('0');
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<'food' | 'wages' | 'transport' | 'supplies'>('food');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
+  const [category, setCategory] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
 
   useEffect(() => {
     const storedWallet = localStorage.getItem('userWallet');
@@ -22,63 +24,92 @@ export default function NGODashboard() {
       router.push('/');
       return;
     }
-
     const wallet = JSON.parse(storedWallet);
     if (wallet.role !== 'ngo') {
       router.push('/');
       return;
     }
-
     setUserWallet(wallet);
-    loadWalletData(wallet.address);
+    loadWalletData(wallet);
   }, [router]);
 
-  const loadWalletData = async (address: string) => {
+  const loadWalletData = async (wallet: any) => {
     try {
-      const walletBalance = await getWalletBalance(address);
+      const [walletBalance, nfts] = await Promise.all([
+        getWalletBalance(wallet.address),
+        getImpactNFTs(wallet.address),
+      ]);
       setBalance(walletBalance);
+      setImpactNFTs(nfts);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load wallet data');
-    } finally {
-      setIsLoading(false);
+      setError('Failed to load wallet data');
     }
   };
 
   const handleSendFunds = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSending(true);
+    setIsLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (!userWallet) {
         throw new Error('Wallet not found');
       }
 
-      const recipient = recipientWallets.find(r => r.id === selectedRecipient);
+      const recipient = mockRecipients.find(r => r.id === selectedRecipient);
       if (!recipient) {
         throw new Error('Selected recipient not found');
       }
 
       // Send XRP to recipient
-      await sendXRP(
+      const txHash = await sendXRP(
         userWallet.secret,
-        recipient.walletAddress,
+        recipient.wallet_address,
         amount,
-        `Category: ${category}`
+        `Funds for ${category} - ${recipient.name}`
       );
 
-      // Reload wallet balance
-      await loadWalletData(userWallet.address);
+      // Mint impact NFT
+      await mintImpactNFT(userWallet.secret, {
+        amount,
+        category,
+        recipient: recipient.name,
+        txHash,
+        timestamp: Date.now(),
+        impactWindow: 12 * 30 * 24 * 60 * 60 * 1000, // 12 months
+        purpose: `Funds for ${category} - ${recipient.name}`,
+      });
 
-      // Reset form
+      // Update wallet data
+      await loadWalletData(userWallet);
+      
+      setSuccess(`Successfully sent ${amount} XRP to ${recipient.name}`);
       setSelectedRecipient('');
       setAmount('');
-      setCategory('food');
+      setCategory('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send funds');
     } finally {
-      setIsSending(false);
+      setIsLoading(false);
     }
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      education: 'bg-blue-100 text-blue-800',
+      healthcare: 'bg-green-100 text-green-800',
+      environment: 'bg-emerald-100 text-emerald-800',
+      humanitarian: 'bg-purple-100 text-purple-800',
+      food: 'bg-orange-100 text-orange-800',
+      wages: 'bg-yellow-100 text-yellow-800',
+      transport: 'bg-indigo-100 text-indigo-800',
+      supplies: 'bg-pink-100 text-pink-800',
+      operations: 'bg-gray-100 text-gray-800',
+      emergency: 'bg-red-100 text-red-800',
+      community: 'bg-teal-100 text-teal-800',
+    };
+    return colors[category] || 'bg-gray-100 text-gray-800';
   };
 
   if (!userWallet) {
@@ -86,31 +117,24 @@ export default function NGODashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">NGO Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Welcome, {userWallet.username}
-          </p>
-        </div>
-
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Wallet Overview</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Address</p>
-              <p className="mt-1 text-sm text-gray-900 break-all">{userWallet.address}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Balance</p>
-              <p className="mt-1 text-sm text-gray-900">{balance} XRP</p>
-            </div>
+    <div className="max-w-4xl mx-auto mt-8 p-6">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h1 className="text-2xl font-bold mb-4">NGO Dashboard</h1>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-600">Wallet Address</p>
+            <p className="font-mono">{userWallet.address}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Balance</p>
+            <p className="font-bold">{balance} XRP</p>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Send Funds</h2>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Send Funds</h2>
           <form onSubmit={handleSendFunds} className="space-y-4">
             <div>
               <label htmlFor="recipient" className="block text-sm font-medium text-gray-700">
@@ -124,9 +148,9 @@ export default function NGODashboard() {
                 required
               >
                 <option value="">Select a recipient</option>
-                {recipientWallets.map((recipient) => (
+                {mockRecipients.map((recipient) => (
                   <option key={recipient.id} value={recipient.id}>
-                    {recipient.name}
+                    {recipient.name} - {recipient.category}
                   </option>
                 ))}
               </select>
@@ -155,14 +179,16 @@ export default function NGODashboard() {
               <select
                 id="category"
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => setCategory(e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 required
               >
-                <option value="food">Food</option>
-                <option value="wages">Wages</option>
-                <option value="transport">Transport</option>
-                <option value="supplies">Supplies</option>
+                <option value="">Select a category</option>
+                {transactionCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -170,16 +196,62 @@ export default function NGODashboard() {
               <div className="text-red-600 text-sm">{error}</div>
             )}
 
+            {success && (
+              <div className="text-green-600 text-sm">{success}</div>
+            )}
+
             <button
               type="submit"
-              disabled={isSending}
+              disabled={isLoading}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isSending ? 'Sending...' : 'Send Funds'}
+              {isLoading ? 'Processing...' : 'Send Funds'}
             </button>
           </form>
         </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Fund Disbursement History</h2>
+          {impactNFTs.length === 0 ? (
+            <p>No fund disbursements found.</p>
+          ) : (
+            <div className="space-y-4">
+              {impactNFTs.map((nft) => {
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                return (
+                  <div key={nft.NFTokenID} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-semibold">{metadata?.recipient || 'Unknown Recipient'}</h3>
+                        <p className="text-sm text-gray-600">
+                          {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(metadata?.category || '')}`}>
+                        {metadata?.category || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <p className="text-sm text-gray-600">Amount</p>
+                        <p className="font-medium">{metadata?.amount || '0'} XRP</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Purpose</p>
+                        <p className="font-medium">{metadata?.purpose || 'Unknown'}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600">Transaction</p>
+                      <p className="font-mono text-xs break-all">{metadata?.txHash || 'Unknown'}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </main>
+    </div>
   );
 } 

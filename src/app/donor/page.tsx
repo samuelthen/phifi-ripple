@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getNFTs } from '@/lib/xrpl/nft';
 import { getWalletBalance } from '@/lib/xrpl/wallet';
-import { verifiedNGOs } from '@/data/mockData';
+import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
+import DonationImpact from '@/components/donor/DonationImpact';
 
 export default function DonorDashboard() {
   const router = useRouter();
   const [userWallet, setUserWallet] = useState<any>(null);
   const [balance, setBalance] = useState<string>('0');
-  const [nfts, setNfts] = useState<any[]>([]);
+  const [donationNFTs, setDonationNFTs] = useState<any[]>([]);
+  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,26 +21,25 @@ export default function DonorDashboard() {
       router.push('/');
       return;
     }
-
     const wallet = JSON.parse(storedWallet);
     if (wallet.role !== 'donor') {
       router.push('/');
       return;
     }
-
     setUserWallet(wallet);
-    loadWalletData(wallet.address);
+    loadWalletData(wallet);
   }, [router]);
 
-  const loadWalletData = async (address: string) => {
+  const loadWalletData = async (wallet: any) => {
     try {
-      const [walletBalance, walletNfts] = await Promise.all([
-        getWalletBalance(address),
-        getNFTs(address),
+      const [walletBalance, receipts, impacts] = await Promise.all([
+        getWalletBalance(wallet.address),
+        getDonorNFTs(wallet.address),
+        getImpactNFTs(wallet.address),
       ]);
-
       setBalance(walletBalance);
-      setNfts(walletNfts);
+      setDonationNFTs(receipts);
+      setImpactNFTs(impacts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wallet data');
     } finally {
@@ -47,89 +47,88 @@ export default function DonorDashboard() {
     }
   };
 
-  const handleNewDonation = () => {
-    router.push('/donate');
-  };
-
   if (!userWallet) {
     return null;
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
+    <div className="max-w-4xl mx-auto mt-8 p-6">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h1 className="text-2xl font-bold mb-4">Donor Dashboard</h1>
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Donor Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Welcome, {userWallet.username}
-            </p>
+            <p className="text-sm text-gray-600">Wallet Address</p>
+            <p className="font-mono">{userWallet.address}</p>
           </div>
-          <button
-            onClick={handleNewDonation}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            New Donation
-          </button>
-        </div>
-
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Wallet Overview</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Address</p>
-              <p className="mt-1 text-sm text-gray-900 break-all">{userWallet.address}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Balance</p>
-              <p className="mt-1 text-sm text-gray-900">{balance} XRP</p>
-            </div>
+          <div>
+            <p className="text-sm text-gray-600">Balance</p>
+            <p className="font-bold">{balance} XRP</p>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Donation Receipts</h2>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Donation Receipts</h2>
+            <button
+              onClick={() => router.push('/donate')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              New Donation
+            </button>
+          </div>
           {isLoading ? (
-            <p className="text-gray-500">Loading receipts...</p>
+            <p>Loading receipts...</p>
           ) : error ? (
             <p className="text-red-600">{error}</p>
-          ) : nfts.length === 0 ? (
-            <p className="text-gray-500">No donation receipts found.</p>
+          ) : donationNFTs.length === 0 ? (
+            <p>No donation receipts found.</p>
           ) : (
             <div className="space-y-4">
-              {nfts.map((nft) => {
-                const metadata = JSON.parse(Buffer.from(nft.URI, 'hex').toString());
-                const ngo = verifiedNGOs.find(n => n.id === metadata.ngoId);
-                
+              {donationNFTs.map((nft) => {
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
                 return (
                   <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-sm font-medium text-gray-500">NGO</p>
-                        <p className="mt-1 text-sm text-gray-900">{ngo?.name || 'Unknown NGO'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Amount</p>
-                        <p className="mt-1 text-sm text-gray-900">{metadata.amount} XRP</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Purpose</p>
-                        <p className="mt-1 text-sm text-gray-900">{metadata.purpose}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Date</p>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {new Date(metadata.timestamp).toLocaleDateString()}
+                        <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                        <p className="text-sm text-gray-600">
+                          {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
                         </p>
                       </div>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
+                      </span>
                     </div>
+                    {metadata && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">Purpose</p>
+                        <p className="text-sm">{metadata.purpose}</p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
         </div>
+
+        <DonationImpact impacts={impactNFTs.map(nft => {
+          const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+          return {
+            id: nft.NFTokenID,
+            donationId: nft.NFTokenID,
+            ngoId: metadata?.ngoId || '',
+            ngoName: metadata?.ngoName || 'Unknown NGO',
+            amount: metadata?.amount || '0',
+            category: metadata?.category || 'unknown',
+            recipient: metadata?.recipient || 'Unknown',
+            timestamp: metadata?.timestamp || Date.now(),
+            txHash: metadata?.txHash || '',
+          };
+        })} />
       </div>
-    </main>
+    </div>
   );
 } 
