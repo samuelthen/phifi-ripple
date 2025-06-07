@@ -6,7 +6,7 @@ import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
 import { getDonorNFTs, getImpactNFTs, mintNGOReceipt } from '@/lib/xrpl/nft';
 import DonationImpact from '@/components/donor/DonationImpact';
 
-export const mockRecipients = [
+const mockRecipients = [
   {
     id: '1',
     name: 'Field Operations Team',

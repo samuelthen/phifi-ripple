@@ -9,9 +9,11 @@ export default function Navbar() {
   const userWallet = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userWallet') || 'null') : null;
 
   const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!userWallet) {
-      e.preventDefault();
       router.push('/');
+    } else if (userWallet.role === 'ngo') {
+      router.push('/ngo');
     } else {
       router.push('/donor');
     }
