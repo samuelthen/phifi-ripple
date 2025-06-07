@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance } from '@/lib/xrpl/wallet';
 import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
@@ -14,40 +14,84 @@ export default function DonorDashboard() {
   const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    const storedWallet = localStorage.getItem('userWallet');
-    if (!storedWallet) {
-      router.push('/');
-      return;
-    }
-    const wallet = JSON.parse(storedWallet);
-    if (wallet.role !== 'donor') {
-      router.push('/');
-      return;
-    }
-    setUserWallet(wallet);
-    loadWalletData(wallet);
-  }, [router]);
-
-  const loadWalletData = async (wallet: any) => {
+  const loadWalletData = useCallback(async (wallet: any) => {
     try {
       const [walletBalance, receipts, impacts] = await Promise.all([
         getWalletBalance(wallet.address),
         getDonorNFTs(wallet.address),
         getImpactNFTs(wallet.address),
       ]);
-      setBalance(walletBalance);
-      setDonationNFTs(receipts);
-      setImpactNFTs(impacts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load wallet data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  if (!userWallet) {
+      if (walletBalance) setBalance(walletBalance);
+      if (receipts) setDonationNFTs(receipts);
+      if (impacts) setImpactNFTs(impacts);
+      setIsDataLoaded(true);
+    } catch (err) {
+      console.error('Error loading wallet data:', err);
+      setError('Failed to load wallet data');
+      // Retry logic
+      if (retryCount < 3) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadWalletData(wallet);
+        }, 2000);
+      }
+    }
+  }, [retryCount]);
+
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const storedWallet = localStorage.getItem('userWallet');
+        if (!storedWallet) {
+          router.push('/');
+          return;
+        }
+
+        const wallet = JSON.parse(storedWallet);
+        if (wallet.role !== 'donor') {
+          router.push('/');
+          return;
+        }
+
+        setUserWallet(wallet);
+        await loadWalletData(wallet);
+      } catch (err) {
+        console.error('Error loading wallet:', err);
+        setError('Failed to load wallet data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWallet();
+  }, [router, loadWalletData]);
+
+  // Refresh data periodically
+  useEffect(() => {
+    if (!userWallet || !isDataLoaded) return;
+
+    const interval = setInterval(async () => {
+      await loadWalletData(userWallet);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [userWallet, isDataLoaded, loadWalletData]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto mt-8 p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <p className="text-center">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userWallet || !isDataLoaded) {
     return null;
   }
 
@@ -78,55 +122,73 @@ export default function DonorDashboard() {
               New Donation
             </button>
           </div>
-          {isLoading ? (
-            <p>Loading receipts...</p>
-          ) : error ? (
+          {error ? (
             <p className="text-red-600">{error}</p>
           ) : donationNFTs.length === 0 ? (
             <p>No donation receipts found.</p>
           ) : (
             <div className="space-y-4">
               {donationNFTs.map((nft) => {
-                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-                return (
-                  <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
-                        <p className="text-sm text-gray-600">
-                          {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                        </p>
+                try {
+                  const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                  return (
+                    <div key={nft.NFTokenID} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                          <p className="text-sm text-gray-600">
+                            {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
+                          </p>
+                        </div>
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
+                        </span>
                       </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                        {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
-                      </span>
+                      {metadata && (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600">Purpose</p>
+                          <p className="text-sm">{metadata.purpose}</p>
+                        </div>
+                      )}
                     </div>
-                    {metadata && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600">Purpose</p>
-                        <p className="text-sm">{metadata.purpose}</p>
-                      </div>
-                    )}
-                  </div>
-                );
+                  );
+                } catch (err) {
+                  console.error('Error parsing NFT metadata:', err);
+                  return null;
+                }
               })}
             </div>
           )}
         </div>
 
         <DonationImpact impacts={impactNFTs.map(nft => {
-          const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-          return {
-            id: nft.NFTokenID,
-            donationId: nft.NFTokenID,
-            ngoId: metadata?.ngoId || '',
-            ngoName: metadata?.ngoName || 'Unknown NGO',
-            amount: metadata?.amount || '0',
-            category: metadata?.category || 'unknown',
-            recipient: metadata?.recipient || 'Unknown',
-            timestamp: metadata?.timestamp || Date.now(),
-            txHash: metadata?.txHash || '',
-          };
+          try {
+            const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+            return {
+              id: nft.NFTokenID,
+              donationId: nft.NFTokenID,
+              ngoId: metadata?.ngoId || '',
+              ngoName: metadata?.ngoName || 'Unknown NGO',
+              amount: metadata?.amount || '0',
+              category: metadata?.category || 'unknown',
+              recipient: metadata?.recipient || 'Unknown',
+              timestamp: metadata?.timestamp || Date.now(),
+              txHash: metadata?.txHash || '',
+            };
+          } catch (err) {
+            console.error('Error parsing impact NFT metadata:', err);
+            return {
+              id: nft.NFTokenID,
+              donationId: nft.NFTokenID,
+              ngoId: '',
+              ngoName: 'Unknown NGO',
+              amount: '0',
+              category: 'unknown',
+              recipient: 'Unknown',
+              timestamp: Date.now(),
+              txHash: '',
+            };
+          }
         })} />
       </div>
     </div>

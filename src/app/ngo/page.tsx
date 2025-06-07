@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
 import { mintImpactNFT, getImpactNFTs } from '@/lib/xrpl/nft';
@@ -13,38 +13,74 @@ export default function NGODashboard() {
   const [selectedRecipient, setSelectedRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    const storedWallet = localStorage.getItem('userWallet');
-    if (!storedWallet) {
-      router.push('/');
-      return;
-    }
-    const wallet = JSON.parse(storedWallet);
-    if (wallet.role !== 'ngo') {
-      router.push('/');
-      return;
-    }
-    setUserWallet(wallet);
-    loadWalletData(wallet);
-  }, [router]);
-
-  const loadWalletData = async (wallet: any) => {
+  const loadWalletData = useCallback(async (wallet: any) => {
     try {
       const [walletBalance, nfts] = await Promise.all([
         getWalletBalance(wallet.address),
         getImpactNFTs(wallet.address),
       ]);
-      setBalance(walletBalance);
-      setImpactNFTs(nfts);
+
+      if (walletBalance) setBalance(walletBalance);
+      if (nfts) setImpactNFTs(nfts);
+      setIsDataLoaded(true);
     } catch (err) {
+      console.error('Error loading wallet data:', err);
       setError('Failed to load wallet data');
+      // Retry logic
+      if (retryCount < 3) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadWalletData(wallet);
+        }, 2000);
+      }
     }
-  };
+  }, [retryCount]);
+
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const storedWallet = localStorage.getItem('userWallet');
+        if (!storedWallet) {
+          router.push('/');
+          return;
+        }
+
+        const wallet = JSON.parse(storedWallet);
+        if (wallet.role !== 'ngo') {
+          router.push('/');
+          return;
+        }
+
+        setUserWallet(wallet);
+        await loadWalletData(wallet);
+      } catch (err) {
+        console.error('Error loading wallet:', err);
+        setError('Failed to load wallet data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWallet();
+  }, [router, loadWalletData]);
+
+  // Refresh data periodically
+  useEffect(() => {
+    if (!userWallet || !isDataLoaded) return;
+
+    const interval = setInterval(async () => {
+      await loadWalletData(userWallet);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [userWallet, isDataLoaded, loadWalletData]);
 
   const handleSendFunds = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +148,17 @@ export default function NGODashboard() {
     return colors[category] || 'bg-gray-100 text-gray-800';
   };
 
-  if (!userWallet) {
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto mt-8 p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <p className="text-center">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userWallet || !isDataLoaded) {
     return null;
   }
 
@@ -212,41 +258,48 @@ export default function NGODashboard() {
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4">Fund Disbursement History</h2>
-          {impactNFTs.length === 0 ? (
+          {error ? (
+            <p className="text-red-600">{error}</p>
+          ) : impactNFTs.length === 0 ? (
             <p>No fund disbursements found.</p>
           ) : (
             <div className="space-y-4">
               {impactNFTs.map((nft) => {
-                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
-                return (
-                  <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold">{metadata?.recipient || 'Unknown Recipient'}</h3>
-                        <p className="text-sm text-gray-600">
-                          {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                        </p>
+                try {
+                  const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                  return (
+                    <div key={nft.NFTokenID} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-semibold">{metadata?.recipient || 'Unknown Recipient'}</h3>
+                          <p className="text-sm text-gray-600">
+                            {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(metadata?.category || '')}`}>
+                          {metadata?.category || 'Unknown'}
+                        </span>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(metadata?.category || '')}`}>
-                        {metadata?.category || 'Unknown'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div>
-                        <p className="text-sm text-gray-600">Amount</p>
-                        <p className="font-medium">{metadata?.amount || '0'} XRP</p>
+                      <div className="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                          <p className="text-sm text-gray-600">Amount</p>
+                          <p className="font-medium">{metadata?.amount || '0'} XRP</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Purpose</p>
+                          <p className="font-medium">{metadata?.purpose || 'Unknown'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Purpose</p>
-                        <p className="font-medium">{metadata?.purpose || 'Unknown'}</p>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">Transaction</p>
+                        <p className="font-mono text-xs break-all">{metadata?.txHash || 'Unknown'}</p>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600">Transaction</p>
-                      <p className="font-mono text-xs break-all">{metadata?.txHash || 'Unknown'}</p>
-                    </div>
-                  </div>
-                );
+                  );
+                } catch (err) {
+                  console.error('Error parsing NFT metadata:', err);
+                  return null;
+                }
               })}
             </div>
           )}

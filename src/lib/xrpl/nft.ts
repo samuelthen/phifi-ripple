@@ -60,22 +60,34 @@ export async function mintImpactNFT(
 }
 
 export async function getNFTs(address: string): Promise<any[]> {
-  const client = await getTestnetClient();
-  
-  try {
-    const response = await client.request({
-      command: 'account_nfts',
-      account: address,
-    });
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const client = await getTestnetClient();
+      const response = await client.request({
+        command: 'account_nfts',
+        account: address,
+      });
 
-    return response.result.account_nfts.map((nft: any) => ({
-      ...nft,
-      URI: nft.URI ? Buffer.from(nft.URI, 'hex').toString() : null,
-    }));
-  } catch (error) {
-    console.error('Error fetching NFTs:', error);
-    return [];
+      if (!response.result.account_nfts) {
+        return [];
+      }
+
+      return response.result.account_nfts.map((nft: any) => ({
+        ...nft,
+        URI: nft.URI ? Buffer.from(nft.URI, 'hex').toString() : null,
+      }));
+    } catch (error) {
+      console.error(`Error fetching NFTs (attempt ${4 - retries}/3):`, error);
+      retries--;
+      if (retries === 0) {
+        throw error;
+      }
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
+  return [];
 }
 
 export async function getDonorNFTs(address: string): Promise<any[]> {
