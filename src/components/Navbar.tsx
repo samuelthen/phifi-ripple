@@ -3,9 +3,11 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
 
 export default function Navbar() {
   const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const userWallet = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userWallet') || 'null') : null;
 
   const handleDashboardClick = (e: React.MouseEvent) => {
@@ -17,6 +19,7 @@ export default function Navbar() {
     } else {
       router.push('/donor');
     }
+    setIsMobileMenuOpen(false);
   };
 
   const formatWalletAddress = (address: string) => {
@@ -39,6 +42,8 @@ export default function Navbar() {
               />
             </Link>
           </div>
+
+          {/* Desktop Navigation */}
           <div className="hidden sm:flex items-center justify-center flex-1">
             <div className="flex items-center space-x-8">
               <Link
@@ -64,7 +69,9 @@ export default function Navbar() {
               </Link>
             </div>
           </div>
-          <div className="flex items-center space-x-6">
+
+          {/* Desktop Wallet Display */}
+          <div className="hidden sm:flex items-center space-x-6">
             {userWallet && (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-4 bg-black px-4 py-2 rounded-lg">
@@ -82,7 +89,88 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
+          {/* Mobile menu button */}
+          <div className="flex items-center sm:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+            >
+              <span className="sr-only">Open main menu</span>
+              {/* Hamburger icon */}
+              <svg
+                className={`${isMobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              {/* Close icon */}
+              <svg
+                className={`${isMobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
+      </div>
+
+      {/* Mobile menu */}
+      <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} sm:hidden`}>
+        <div className="pt-2 pb-3 space-y-1">
+          <Link
+            href="/"
+            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Home
+          </Link>
+          <Link
+            href="/ngos"
+            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Browse Our NGOs
+          </Link>
+          <Link
+            href="/donor"
+            onClick={(e) => {
+              handleDashboardClick(e);
+              setIsMobileMenuOpen(false);
+            }}
+            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
+          >
+            Dashboard
+          </Link>
+        </div>
+        {/* Mobile wallet display */}
+        {userWallet && (
+          <div className="pt-4 pb-3 border-t border-gray-200">
+            <div className="flex items-center px-4">
+              <div className="flex-shrink-0">
+                <Image
+                  src="/xrpl-logo.svg"
+                  alt="XRPL"
+                  width={80}
+                  height={24}
+                  className="h-6 w-auto"
+                />
+              </div>
+              <div className="ml-3">
+                <div className="text-base font-medium text-gray-800">
+                  {formatWalletAddress(userWallet.address)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
