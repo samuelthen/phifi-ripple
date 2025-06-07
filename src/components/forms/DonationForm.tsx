@@ -62,6 +62,7 @@ export default function DonationForm() {
       await mintDonationReceipt(userWallet.secret, {
         amount,
         ngoId: ngo.id,
+        ngoName: ngo.name,
         purpose,
         txHash,
         timestamp: Date.now(),
