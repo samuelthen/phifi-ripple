@@ -167,48 +167,66 @@ export default function DonorDashboard() {
         {/* Top Section - Impact Analytics and Wallet Info */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Donation Impact Section */}
-          {Object.keys(categoryProportions).length > 0 && (
-            <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
-              <h2 className="text-xl font-bold mb-4">✨ Impact Analytics Dashboard</h2>
-              <div className="space-y-2 mb-4">
-                {Object.entries(categoryProportions).map(([name, value]) => (
-                  <div key={name} className="flex justify-between items-center text-sm">
-                    <span className="capitalize text-gray-700">{name}</span>
-                    <span className="font-mono">{value.toFixed(2)}%</span>
-                  </div>
-                ))}
-              </div>
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <h2 className="text-xl font-bold mb-4">✨ Impact Analytics Dashboard</h2>
+            {Object.keys(categoryProportions).length > 0 ? (
+              <>
+                <div className="space-y-2 mb-4">
+                  {Object.entries(categoryProportions).map(([name, value]) => (
+                    <div key={name} className="flex justify-between items-center text-sm">
+                      <span className="capitalize text-gray-700">{name}</span>
+                      <span className="font-mono">{value.toFixed(2)}%</span>
+                    </div>
+                  ))}
+                </div>
 
-              <div className="mt-4" style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie
-                      data={Object.entries(categoryProportions).map(([name, value]) => ({ name, value }))}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={({ name, percent }) => `${name.charAt(0).toUpperCase() + name.slice(1)} (${(percent * 100).toFixed(0)}%)`}
-                    >
-                      {Object.entries(categoryProportions).map(([key], index) => (
-                        <Cell key={`cell-${key}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => `${value.toFixed(2)}%`}
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.375rem',
-                        padding: '0.5rem',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="mt-4" style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(categoryProportions).map(([name, value]) => ({ name, value }))}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={({ name, percent }) => `${name.charAt(0).toUpperCase() + name.slice(1)} (${(percent * 100).toFixed(0)}%)`}
+                      >
+                        {Object.entries(categoryProportions).map(([key], index) => (
+                          <Cell key={`cell-${key}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => `${value.toFixed(2)}%`}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.375rem',
+                          padding: '0.5rem',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                <div className="text-gray-500 mb-4">
+                  <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <h3 className="text-lg font-semibold mb-2">No Impact Data Yet</h3>
+                  <p className="text-sm">Make your first donation to start tracking your impact!</p>
+                </div>
+                <button
+                  onClick={() => router.push('/donate')}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  Make Your First Donation
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Wallet Info Section */}
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
