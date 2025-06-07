@@ -3,72 +3,62 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWalletBalance, sendXRP } from '@/lib/xrpl/wallet';
-import { mintImpactNFT, getImpactNFTs } from '@/lib/xrpl/nft';
-import { mockRecipients, transactionCategories } from '@/data/mockData';
+import { getDonorNFTs, getImpactNFTs, mintNGOReceipt } from '@/lib/xrpl/nft';
+import DonationImpact from '@/components/donor/DonationImpact';
 
-export default function NGODashboard() {
+const mockRecipients = [
+  {
+    id: '1',
+    name: 'Field Operations Team',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'operations',
+  },
+  {
+    id: '2',
+    name: 'Medical Supplies',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'supplies',
+  },
+  {
+    id: '3',
+    name: 'Local Community Center',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'community',
+  },
+  {
+    id: '4',
+    name: 'Emergency Response Team',
+    wallet_address: 'raYw7HnfnoM5Tu52esPEfzhXkZCiurFiGb',
+    category: 'emergency',
+  },
+];
+
+export default function NgoDashboard() {
   const router = useRouter();
   const [userWallet, setUserWallet] = useState<any>(null);
   const [balance, setBalance] = useState<string>('0');
-  const [selectedRecipient, setSelectedRecipient] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
+  const [donationNFTs, setDonationNFTs] = useState<any[]>([]);
+  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [impactNFTs, setImpactNFTs] = useState<any[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [selectedPurpose, setSelectedPurpose] = useState<'food' | 'wages' | 'transport' | 'supplies'>('food');
+  const [amount, setAmount] = useState<string>('10');
+  const [sending, setSending] = useState(false);
+  const [recipient, setRecipient] = useState(mockRecipients[0]);
 
   const loadWalletData = useCallback(async (wallet: any) => {
     try {
-      const [walletBalance, nfts] = await Promise.all([
+      const [walletBalance, receipts, impacts] = await Promise.all([
         getWalletBalance(wallet.address),
+        getDonorNFTs(wallet.address),
         getImpactNFTs(wallet.address),
       ]);
 
       if (walletBalance) setBalance(walletBalance);
-
-      const parsedNFTs = nfts
-        .map(nft => {
-          try {
-            const metadataRaw = nft.URI ? Buffer.from(nft.URI, 'hex').toString() : null;
-            const metadata = metadataRaw ? JSON.parse(metadataRaw) : {};
-
-            const fallbackMetadata = {
-              donationId: typeof metadata.donationId === 'string' ? metadata.donationId : metadata.txHash || nft.txHash || 'unknown',
-              ngoId: typeof metadata.ngoId === 'string' ? metadata.ngoId : wallet?.address || 'unknown',
-              ngoName: typeof metadata.ngoName === 'string' ? metadata.ngoName : wallet?.username || 'Unknown NGO',
-              amount: typeof metadata.amount === 'string' ? metadata.amount : metadata.amount?.toString?.() || '0',
-              category: typeof metadata.category === 'string' ? metadata.category : 'unknown',
-              recipient: typeof metadata.recipient === 'string' ? metadata.recipient : 'Unknown',
-              timestamp: typeof metadata.timestamp === 'number' ? metadata.timestamp : Date.now(),
-              impactWindow: typeof metadata.impactWindow === 'number' ? metadata.impactWindow : 12 * 30 * 24 * 60 * 60 * 1000,
-              txHash: typeof metadata.txHash === 'string' ? metadata.txHash : 'unknown',
-              purpose: typeof metadata.purpose === 'string' ? metadata.purpose : 'Not specified',
-              impactMetrics: Array.isArray(metadata.impactMetrics)
-                ? metadata.impactMetrics
-                : [{
-                    category: metadata.category || 'unknown',
-                    amount: metadata.amount?.toString() || '0',
-                    percentage: 100,
-                    description: `Funds allocated to ${metadata.recipient || 'Unknown'}`
-                  }]
-            };
-
-            return {
-              ...nft,
-              metadata: fallbackMetadata,
-              legacy: Object.keys(metadata).length < 5
-            };
-          } catch (err) {
-            console.warn('Failed to parse NFT metadata (possibly legacy NFT):', nft, err);
-            return null;
-          }
-        })
-        .filter(Boolean);
-
-      setImpactNFTs(parsedNFTs);
+      if (receipts) setDonationNFTs(receipts);
+      if (impacts) setImpactNFTs(impacts);
       setIsDataLoaded(true);
     } catch (err) {
       console.error('Error loading wallet data:', err);
@@ -86,22 +76,16 @@ export default function NGODashboard() {
     const loadWallet = async () => {
       try {
         const storedWallet = localStorage.getItem('userWallet');
-        if (!storedWallet) {
-          router.push('/');
-          return;
-        }
+        if (!storedWallet) return router.push('/');
 
         const wallet = JSON.parse(storedWallet);
-        if (wallet.role !== 'ngo') {
-          router.push('/');
-          return;
-        }
+        if (wallet.role !== 'ngo') return router.push('/');
 
         setUserWallet(wallet);
         await loadWalletData(wallet);
       } catch (err) {
         console.error('Error loading wallet:', err);
-        setError('Failed to load wallet data');
+        setError('Failed to load wallet');
       } finally {
         setIsLoading(false);
       }
@@ -110,87 +94,38 @@ export default function NGODashboard() {
     loadWallet();
   }, [router, loadWalletData]);
 
-  useEffect(() => {
-    if (!userWallet || !isDataLoaded) return;
+  const handleSendFunds = async () => {
+    if (!userWallet || !amount || parseFloat(amount) <= 0) return;
 
-    const interval = setInterval(async () => {
-      await loadWalletData(userWallet);
-    }, 30000);
+    if (!userWallet.secret || typeof userWallet.secret !== 'string') {
+      alert('Wallet secret is missing. Cannot send transaction.');
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [userWallet, isDataLoaded, loadWalletData]);
-
-  const handleSendFunds = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
+    setSending(true);
 
     try {
-      if (!userWallet) throw new Error('Wallet not found');
+      const txHash = await sendXRP(userWallet.secret, recipient.wallet_address, amount, selectedPurpose);
 
-      const recipient = mockRecipients.find(r => r.id === selectedRecipient);
-      if (!recipient) throw new Error('Selected recipient not found');
-      if (!amount || !category) throw new Error('Please fill in all required fields');
-
-      const txHash = await sendXRP(
-        userWallet.secret,
-        recipient.wallet_address,
+      await mintNGOReceipt(userWallet.secret, {
         amount,
-        `Funds for ${category} - ${recipient.name}`
-      );
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      await mintImpactNFT(userWallet.secret, {
-        donationId: txHash,
-        ngoId: userWallet.address,
-        ngoName: userWallet.username || 'Unknown NGO',
-        amount: amount.toString(),
-        category,
+        purpose: selectedPurpose,
         recipient: recipient.name,
-        timestamp: Date.now(),
-        impactWindow: 12 * 30 * 24 * 60 * 60 * 1000,
+        ngoId: userWallet.username || userWallet.address,
+        ngoName: 'Your NGO Name',
         txHash,
-        purpose: `Funds for ${category} - ${recipient.name}`,
-        impactMetrics: [{
-          category,
-          amount: amount.toString(),
-          percentage: 100,
-          description: `Funds allocated to ${recipient.name} for ${category}`
-        }]
+        timestamp: Date.now(),
+        category: recipient.category,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      alert(`Sent ${amount} XRP to ${recipient.name}. NFT receipt minted.`);
       await loadWalletData(userWallet);
-
-      setSuccess(`Successfully sent ${amount} XRP to ${recipient.name}`);
-      setSelectedRecipient('');
-      setAmount('');
-      setCategory('');
-    } catch (err) {
-      console.error('Error in handleSendFunds:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send funds');
+    } catch (err: any) {
+      console.error('Error sending funds:', err);
+      alert(`Error sending funds:\n${err?.message || JSON.stringify(err)}`);
     } finally {
-      setIsLoading(false);
+      setSending(false);
     }
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      education: 'bg-blue-100 text-blue-800',
-      healthcare: 'bg-green-100 text-green-800',
-      environment: 'bg-emerald-100 text-emerald-800',
-      humanitarian: 'bg-purple-100 text-purple-800',
-      food: 'bg-orange-100 text-orange-800',
-      wages: 'bg-yellow-100 text-yellow-800',
-      transport: 'bg-indigo-100 text-indigo-800',
-      supplies: 'bg-pink-100 text-pink-800',
-      operations: 'bg-gray-100 text-gray-800',
-      emergency: 'bg-red-100 text-red-800',
-      community: 'bg-teal-100 text-teal-800',
-    };
-    return colors[category] || 'bg-gray-100 text-gray-800';
   };
 
   if (isLoading) {
@@ -203,9 +138,7 @@ export default function NGODashboard() {
     );
   }
 
-  if (!userWallet || !isDataLoaded) {
-    return null;
-  }
+  if (!userWallet || !isDataLoaded) return null;
 
   return (
     <div className="max-w-4xl mx-auto mt-8 p-6">
@@ -226,128 +159,85 @@ export default function NGODashboard() {
       <div className="grid grid-cols-1 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold mb-4">Send Funds</h2>
-          <form onSubmit={handleSendFunds} className="space-y-4">
-            <div>
-              <label htmlFor="recipient" className="block text-sm font-medium text-gray-700">Select Recipient</label>
-              <select
-                id="recipient"
-                value={selectedRecipient}
-                onChange={(e) => setSelectedRecipient(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                required
-              >
-                <option value="">Select a recipient</option>
-                {mockRecipients.map((recipient) => (
-                  <option key={recipient.id} value={recipient.id}>
-                    {recipient.name} - {recipient.category}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount (XRP)</label>
-              <input
-                type="number"
-                id="amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                min="1"
-                step="0.1"
-                required
-              />
-            </div>
+          <label className="block mb-2 text-sm font-medium">Select Recipient</label>
+          <select
+            value={recipient.id}
+            onChange={(e) => {
+              const selected = mockRecipients.find(r => r.id === e.target.value);
+              if (selected) setRecipient(selected);
+            }}
+            className="mb-4 p-2 border rounded-md w-full"
+          >
+            {mockRecipients.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                required
-              >
-                <option value="">Select a category</option>
-                {transactionCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <label className="block mb-2 text-sm font-medium">Select Purpose</label>
+          <select
+            value={selectedPurpose}
+            onChange={(e) => setSelectedPurpose(e.target.value as any)}
+            className="mb-4 p-2 border rounded-md w-full"
+          >
+            <option value="food">Food</option>
+            <option value="wages">Wages</option>
+            <option value="transport">Transport</option>
+            <option value="supplies">Supplies</option>
+          </select>
 
-            {error && <div className="text-red-600 text-sm">{error}</div>}
-            {success && <div className="text-green-600 text-sm">{success}</div>}
+          <label className="block mb-2 text-sm font-medium">Enter Amount (XRP)</label>
+          <input
+            type="number"
+            min="1"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="mb-4 p-2 border rounded-md w-full"
+          />
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isLoading ? 'Processing...' : 'Send Funds'}
-            </button>
-          </form>
+          <button
+            onClick={handleSendFunds}
+            disabled={sending || !amount || parseFloat(amount) <= 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+          >
+            {sending ? 'Processing...' : `Send ${amount} XRP`}
+          </button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Fund Disbursement History</h2>
-          {error ? (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-red-600">{error}</p>
-            </div>
-          ) : impactNFTs.length === 0 ? (
-            <p className="text-gray-500">No fund disbursements found.</p>
-          ) : (
-            <div className="space-y-4">
-              {impactNFTs.map((nft) => {
-                const metadata = nft.metadata;
-                if (!metadata) return null;
-
-                return (
-                  <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold">{metadata.recipient || 'Unknown Recipient'}</h3>
-                        <p className="text-sm text-gray-600">
-                          {metadata.timestamp ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                        </p>
-                        {nft.legacy && <p className="text-xs text-gray-400 italic">(Legacy format)</p>}
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(metadata.category || '')}`}>
-                        {metadata.category || 'Unknown'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div>
-                        <p className="text-sm text-gray-600">Amount</p>
-                        <p className="font-medium">{metadata.amount} XRP</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Purpose</p>
-                        <p className="font-medium">{metadata.purpose}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600">Transaction</p>
-                      <p className="font-mono text-xs break-all">{metadata.txHash}</p>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600">Impact Details</p>
-                      <div className="mt-1 space-y-1">
-                        {metadata.impactMetrics.map((metric: any, index: number) => (
-                          <div key={index} className="text-sm">
-                            <span className="font-medium">{metric.category || 'Unknown'}:</span> {metric.description || 'No description'} ({metric.percentage || 0}%)
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <DonationImpact
+          impacts={impactNFTs.map(nft => {
+            try {
+              const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+              return {
+                id: nft.NFTokenID,
+                donationId: nft.NFTokenID,
+                ngoId: metadata?.ngoId || '',
+                ngoName: metadata?.recipient || 'Unknown Recipient',
+                amount: metadata?.amount || '0',
+                category: metadata?.category || 'unknown',
+                recipient: metadata?.purpose || 'N/A', // Swapped with purpose
+                purpose: metadata?.purpose || 'N/A',
+                timestamp: metadata?.timestamp || Date.now(),
+                txHash: metadata?.txHash || '',
+              };
+            } catch {
+              return {
+                id: nft.NFTokenID,
+                donationId: nft.NFTokenID,
+                ngoId: '',
+                ngoName: 'Unknown Recipient',
+                amount: '0',
+                category: 'unknown',
+                recipient: 'Unknown',
+                purpose: 'Unknown',
+                timestamp: Date.now(),
+                txHash: '',
+              };
+            }
+          })}
+        />
       </div>
     </div>
   );

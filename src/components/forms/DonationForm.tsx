@@ -61,7 +61,7 @@ export default function DonationForm() {
       // Mint NFT receipt
       await mintDonationReceipt(userWallet.secret, {
         amount,
-        ngoId: ngo.id,
+        ngoId: ngo.wallet_address,
         ngoName: ngo.name,
         purpose,
         category: ngo.category,
