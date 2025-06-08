@@ -1,92 +1,123 @@
-# PhiFi - Decentralized Donation & Impact Tracking Platform
+# PhiFi - Transparent Philanthropy on XRPL
 
-PhiFi is a decentralized donation and impact tracking platform built on the XRP Ledger (XRPL). It enables donors to make donations to verified NGOs and track their impact through NFT receipts, while NGOs can manage their funds and demonstrate transparency in their operations.
+[![XRPL Supported](https://img.shields.io/badge/Supported%20by-XRPL-blue)](https://xrpl.org)
 
-## Features
+PhiFi is a decentralized philanthropy platform built on the XRP Ledger that brings full transparency and traceability to charitable giving. By leveraging XRPL's NFT capabilities, PhiFi creates an immutable record of donations and their impact.
 
-- 🧑 **Donor Features**
-  - Create a testnet wallet
-  - Donate XRP to verified NGOs
-  - Receive NFT receipts for donations
-  - Track impact of donations
+## 🌟 Vision
 
-- 🏢 **NGO Features**
-  - Create a testnet wallet
-  - Receive donations
-  - Send funds to verified recipients
-  - Add metadata for transparency
+In philanthropy, the biggest problem isn't generosity — it's visibility. Donors give from the heart, but once funds leave their hands, the journey turns opaque. Where does the money go? Who actually benefits? Even NGOs struggle to report impact in a verifiable, transparent way.
 
-## Tech Stack
+PhiFi fixes this by using the XRP Ledger to bring full transparency and traceability to charitable giving.
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Styling**: Tailwind CSS
-- **Blockchain**: XRPL (XRP Ledger)
-- **Development**: Node.js, npm
+## 🚀 Key Features
 
-## Prerequisites
+- **Instant NFT Receipts**: Donors receive NFT receipts minted on-chain with full metadata
+- **Transparent Spending**: NGOs log all spending transactions on the ledger
+- **Real-time Impact Tracking**: Donors can track their impact journey through the PhiFi dashboard
+- **Verified NGOs**: All participating organizations are verified and accountable
+- **Decentralized Architecture**: Built on XRPL for maximum transparency and security
 
-- Node.js 18.x or later
-- npm 9.x or later
-- Modern web browser with JavaScript enabled
+## 📱 Platform Preview
 
-## Getting Started
+### Donor Dashboard
+![Donor Dashboard](/public/dashboard.png)
+*Track your donations and impact in real-time*
+
+### NGO Management
+![NGO Page](/public/ngopage.png)
+*Manage donations and demonstrate transparency*
+
+## 🏗️ Architecture
+
+PhiFi is architected with decentralization as the core principle:
+
+| Component | Decentralization Method |
+|-----------|------------------------|
+| 💸 Donations | Direct to NGO XRPL wallets via client-side xrpl.js |
+| 📜 NFT Receipts | Minted on XRPL using XLS-20 standard |
+| 🧾 Spending | On-chain transactions with metadata |
+| 📊 Dashboard | Real-time XRPL data reading |
+| 🏦 Storage | All data on-chain, no database storage |
+
+## 🛠️ Technical Stack
+
+- **Frontend**: Next.js, React, TailwindCSS
+- **Blockchain**: XRP Ledger (XRPL)
+- **Smart Contracts**: XRPL NFT Standard (XLS-20)
+- **Authentication**: Wallet-based authentication
+- **State Management**: React Context + Hooks
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- XRPL Testnet account
+
+### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/phifi-ripple.git
-   cd phifi-ripple
-   ```
+```bash
+git clone https://github.com/yourusername/phifi.git
+cd phifi
+```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js app directory
-│   ├── donor/             # Donor dashboard
-│   ├── ngo/              # NGO dashboard
-│   ├── donate/           # Donation page
-│   └── page.tsx          # Home page
-├── components/            # React components
-│   └── forms/            # Form components
-├── lib/                   # Utility functions
-│   └── xrpl/             # XRPL-related utilities
-└── data/                 # Mock data and types
+```bash
+npm install
+# or
+yarn install
 ```
 
-## Development
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-- The application uses the XRPL Testnet for development and testing
-- Testnet wallets are automatically funded with 50 XRP
-- All transactions are simulated on the testnet
-- No real XRP is used in the application
+4. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-## Contributing
+## 🔮 Future Roadmap
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Phase 1: Enhanced Decentralization
+- [ ] Wallet custody integration
+- [ ] Self-authenticated wallets
+- [ ] XRPL Hooks for auto-minting
+- [ ] XRPL DIDs for NGO verification
+- [ ] Full client-side implementation
 
-## License
+### Phase 2: Advanced Features
+- [ ] DID Integration
+- [ ] Auto NFT Minting
+- [ ] Multisig NGO Wallets
+- [ ] Impact Window Tracking
+- [ ] AI Impact Storytelling
+- [ ] Cross-Chain Donations
+- [ ] Mobile Wallet Integration
+- [ ] Media-Backed Spend Proofs
+- [ ] iDAO Governance
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- XRP Ledger Foundation
-- Ripple Hackathon Team
-- Next.js Team
-- Tailwind CSS Team
+- XRPL Foundation for their support
+- The open-source community
+- All contributors and supporters
+
+---
+
+🌍 Give once. Track forever. Know your impact.
+That's PhiFi.
