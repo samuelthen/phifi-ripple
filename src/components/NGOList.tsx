@@ -3,10 +3,23 @@
 import { useState, useEffect } from 'react';
 import { getVerifiedNGOs, NGO } from '@/lib/supabase/client';
 import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
+import Image from 'next/image';
 
 interface NGOWithDonations extends NGO {
   total_donations?: number;
 }
+
+const getCategoryImage = (category: string) => {
+  const categoryMap: { [key: string]: string } = {
+    education: '/images/categories/education.jpg',
+    healthcare: '/images/categories/healthcare.jpg',
+    environment: '/images/categories/environment.jpg',
+    poverty: '/images/categories/poverty.jpg',
+    disaster: '/images/categories/disaster.jpg',
+    other: '/images/categories/other.jpg'
+  };
+  return categoryMap[category.toLowerCase()] || '/images/categories/other.jpg';
+};
 
 export default function NGOList() {
   const [ngos, setNGOs] = useState<NGOWithDonations[]>([]);
@@ -107,15 +120,28 @@ export default function NGOList() {
           key={ngo.id}
           className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
         >
+          <div className="relative w-full h-48">
+            <Image
+              src={`/${ngo.category}.jpg`}
+              alt={`${ngo.name} - ${ngo.category}`}
+              fill
+              priority
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <h3 className="text-xl font-semibold text-white mb-1">
+                {ngo.name}
+              </h3>
+              <p className="text-white/90 text-sm">
+                {ngo.category.charAt(0).toUpperCase() + ngo.category.slice(1)}
+              </p>
+            </div>
+          </div>
           <div className="p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {ngo.name}
-            </h3>
-            <p className="text-gray-600 text-sm mb-2">
+            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
               {ngo.description}
-            </p>
-            <p className="text-indigo-600 text-sm mb-4">
-              Category: {ngo.category.charAt(0).toUpperCase() + ngo.category.slice(1)}
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
