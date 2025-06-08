@@ -44,7 +44,7 @@ export default function NGOList() {
             // Calculate total from donor NFTs
             const donorTotal = donorNFTs.reduce((sum, nft) => {
               try {
-                const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
                 if (metadata?.amount) {
                   const amount = parseFloat(metadata.amount);
                   return sum + (isNaN(amount) ? 0 : amount);
@@ -59,7 +59,7 @@ export default function NGOList() {
             // Calculate total from impact NFTs
             const impactTotal = impactNFTs.reduce((sum, nft) => {
               try {
-                const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
+                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
                 if (metadata?.amount) {
                   const amount = parseFloat(metadata.amount);
                   return sum + (isNaN(amount) ? 0 : amount);
