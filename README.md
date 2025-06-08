@@ -103,10 +103,6 @@ yarn dev
 - [ ] Media-Backed Spend Proofs
 - [ ] iDAO Governance
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
 ## 🙏 Acknowledgments
 
 - XRPL Foundation for their support
