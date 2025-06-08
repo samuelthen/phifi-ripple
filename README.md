@@ -56,32 +56,6 @@ PhiFi is architected with decentralization as the core principle:
 - npm or yarn
 - XRPL Testnet account
 
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/phifi.git
-cd phifi
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-4. Start the development server:
-```bash
-npm run dev
-# or
-yarn dev
-```
 
 ## 🔮 Future Roadmap
 
