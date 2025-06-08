@@ -107,10 +107,6 @@ yarn dev
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - XRPL Foundation for their support
@@ -119,5 +115,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-🌍 Give once. Track forever. Know your impact.
+🌍 Give with purpose. Track with proof. Know your impact.
 That's PhiFi.
