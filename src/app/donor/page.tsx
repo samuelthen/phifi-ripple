@@ -130,10 +130,8 @@ export default function DonorDashboard() {
       try {
         const storedWallet = localStorage.getItem('userWallet');
         if (!storedWallet) return router.push('/');
-
         const wallet = JSON.parse(storedWallet);
         if (wallet.role !== 'donor') return router.push('/');
-
         setUserWallet(wallet);
         await loadWalletData(wallet);
       } catch (err) {
@@ -164,22 +162,21 @@ export default function DonorDashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="max-w-7xl mx-auto mt-8 p-4 sm:p-6">
-        {/* Top Section - Impact Analytics and Wallet Info */}
+        {/* Top Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Donation Impact Section */}
+          {/* Impact Analytics */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
             <h2 className="text-xl font-bold mb-4">✨ Impact Analytics Dashboard</h2>
             {Object.keys(categoryProportions).length > 0 ? (
               <>
                 <div className="space-y-2 mb-4">
                   {Object.entries(categoryProportions).map(([name, value]) => (
-                    <div key={name} className="flex justify-between items-center text-sm">
+                    <div key={name} className="flex justify-between text-sm">
                       <span className="capitalize text-gray-700">{name}</span>
                       <span className="font-mono">{value.toFixed(2)}%</span>
                     </div>
                   ))}
                 </div>
-
                 <div className="mt-4" style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer>
                     <PieChart>
@@ -190,10 +187,12 @@ export default function DonorDashboard() {
                         cx="50%"
                         cy="50%"
                         outerRadius={100}
-                        label={({ name, percent }) => `${name.charAt(0).toUpperCase() + name.slice(1)} (${(percent * 100).toFixed(0)}%)`}
+                        label={({ name, percent }) =>
+                          `${name.charAt(0).toUpperCase() + name.slice(1)} (${(percent * 100).toFixed(0)}%)`
+                        }
                       >
-                        {Object.entries(categoryProportions).map(([key], index) => (
-                          <Cell key={`cell-${key}`} fill={COLORS[index % COLORS.length]} />
+                        {Object.entries(categoryProportions).map(([_, __], index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip
@@ -210,51 +209,35 @@ export default function DonorDashboard() {
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] text-center">
-                <div className="text-gray-500 mb-4">
-                  <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  <h3 className="text-lg font-semibold mb-2">No Impact Data Yet</h3>
-                  <p className="text-sm">Make your first donation to start tracking your impact!</p>
-                </div>
-                <button
-                  onClick={() => router.push('/donate')}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  Make Your First Donation
-                </button>
-              </div>
+              <div className="text-center text-gray-500">No donation data yet.</div>
             )}
           </div>
 
-          {/* Wallet Info Section */}
+          {/* Wallet Info */}
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
             <h1 className="text-2xl font-bold mb-4">🌐 Web3 Donor Portal</h1>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid gap-4">
               <div>
                 <p className="text-sm text-gray-600">Your Wallet Address</p>
                 <p className="font-mono text-sm break-all">{userWallet.address}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">XRP Balance</p>
-                <p className="font-bold text-xl">{balance} XRP</p>
+                <p className="text-xl font-bold">{balance} XRP</p>
               </div>
-              <div className="mt-4">
-                <button
-                  onClick={() => router.push('/donate')}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  🎯 New Impact Donation
-                </button>
-              </div>
+              <button
+                onClick={() => router.push('/donate')}
+                className="mt-4 w-full bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors"
+              >
+                🎯 New Impact Donation
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Bottom Section - Impact Tracker and Donation History */}
+        {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Impact List Section */}
+          {/* Impact Tracker */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-4 sm:p-6">
             <h2 className="text-xl font-bold mb-4">🌟 Real-Time Impact Tracker</h2>
             <div className="max-h-[500px] overflow-y-auto">
@@ -262,7 +245,7 @@ export default function DonorDashboard() {
             </div>
           </div>
 
-          {/* Donation Receipts Section */}
+          {/* Donation Receipts */}
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
             <h2 className="text-xl font-bold mb-4">📜 On-Chain Donation History</h2>
             {error ? (
@@ -270,46 +253,57 @@ export default function DonorDashboard() {
             ) : donationNFTs.length === 0 ? (
               <p className="text-gray-500">No donation receipts found.</p>
             ) : (
-              <div className="space-y-4">
-                {donationNFTs.map((nft) => {
-                  try {
-                    const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
-                    return (
-                      <div key={nft.NFTokenID} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
-                            <p className="text-sm text-gray-600">
-                              {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
-                            </p>
+              <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                {[...donationNFTs]
+                  .sort((a, b) => {
+                    const dateA = a.URI ? JSON.parse(a.URI)?.timestamp || 0 : 0;
+                    const dateB = b.URI ? JSON.parse(b.URI)?.timestamp || 0 : 0;
+                    return dateB - dateA;
+                  })
+                  .map((nft) => {
+                    try {
+                      const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                      return (
+                        <div key={nft.NFTokenID} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold">{metadata?.ngoName || 'Unknown NGO'}</h3>
+                              <p className="text-sm text-gray-600">
+                                {metadata ? new Date(metadata.timestamp).toLocaleDateString() : 'Unknown date'}
+                              </p>
+                            </div>
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                              {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
+                            </span>
                           </div>
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                            {metadata ? `${metadata.amount} XRP` : 'Unknown amount'}
-                          </span>
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-800">
+                              View Details
+                            </summary>
+                            {metadata && (
+                              <div className="mt-2 pl-4 border-l-2 border-indigo-200">
+                                <div className="mt-1">
+                                  <p className="text-sm text-gray-600">Purpose</p>
+                                  <p className="text-sm">{metadata.purpose}</p>
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-600">Category</p>
+                                  <p className="text-sm">{metadata.category}</p>
+                                </div>
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-600">Transaction</p>
+                                  <p className="font-mono text-xs break-all">{metadata.txHash}</p>
+                                </div>
+                              </div>
+                            )}
+                          </details>
                         </div>
-                        {metadata && (
-                          <>
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600">Purpose</p>
-                              <p className="text-sm">{metadata.purpose}</p>
-                            </div>
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600">Category</p>
-                              <p className="text-sm">{metadata.category}</p>
-                            </div>
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600">Transaction</p>
-                              <p className="font-mono text-xs break-all">{metadata.txHash}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  } catch (err) {
-                    console.error('Error parsing NFT metadata:', err, 'NFT:', nft);
-                    return null;
-                  }
-                })}
+                      );
+                    } catch (err) {
+                      console.error('Error parsing NFT metadata:', err, 'NFT:', nft);
+                      return null;
+                    }
+                  })}
               </div>
             )}
           </div>

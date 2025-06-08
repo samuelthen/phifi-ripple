@@ -9,8 +9,15 @@ export default function Navbar() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isWalletMenuOpen, setIsWalletMenuOpen] = useState(false);
+  const [userWallet, setUserWallet] = useState<any>(null);
   const walletMenuRef = useRef<HTMLDivElement>(null);
-  const userWallet = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userWallet') || 'null') : null;
+
+  useEffect(() => {
+    const storedWallet = localStorage.getItem('userWallet');
+    if (storedWallet) {
+      setUserWallet(JSON.parse(storedWallet));
+    }
+  }, []);
 
   const handleDashboardClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -26,6 +33,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('userWallet');
+    setUserWallet(null);
     router.push('/');
   };
 
