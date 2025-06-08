@@ -1,20 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getRegisteredNGOs } from '@/lib/xrpl/ngo';
+import { getVerifiedNGOs, NGO } from '@/lib/supabase/client';
 import { getDonorNFTs, getImpactNFTs } from '@/lib/xrpl/nft';
 
-interface NGO {
-  id: string;
-  name: string;
-  wallet_address: string;
-  description: string;
-  created_at: string;
+interface NGOWithDonations extends NGO {
   total_donations?: number;
 }
 
 export default function NGOList() {
-  const [ngos, setNGOs] = useState<NGO[]>([]);
+  const [ngos, setNGOs] = useState<NGOWithDonations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -22,11 +17,11 @@ export default function NGOList() {
     setMounted(true);
     const loadNGOs = async () => {
       try {
-        const registeredNGOs = await getRegisteredNGOs();
+        const verifiedNGOs = await getVerifiedNGOs();
         
         // Calculate total donations for each NGO
         const ngosWithDonations = await Promise.all(
-          registeredNGOs.map(async (ngo) => {
+          verifiedNGOs.map(async (ngo) => {
             // Get both donor and impact NFTs
             const [donorNFTs, impactNFTs] = await Promise.all([
               getDonorNFTs(ngo.wallet_address),
@@ -36,7 +31,7 @@ export default function NGOList() {
             // Calculate total from donor NFTs
             const donorTotal = donorNFTs.reduce((sum, nft) => {
               try {
-                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
                 if (metadata?.amount) {
                   const amount = parseFloat(metadata.amount);
                   return sum + (isNaN(amount) ? 0 : amount);
@@ -51,7 +46,7 @@ export default function NGOList() {
             // Calculate total from impact NFTs
             const impactTotal = impactNFTs.reduce((sum, nft) => {
               try {
-                const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+                const metadata = nft.URI ? JSON.parse(Buffer.from(nft.URI, 'hex').toString()) : null;
                 if (metadata?.amount) {
                   const amount = parseFloat(metadata.amount);
                   return sum + (isNaN(amount) ? 0 : amount);
@@ -100,7 +95,7 @@ export default function NGOList() {
   if (ngos.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No NGOs registered yet.</p>
+        <p className="text-gray-500">No verified NGOs available.</p>
       </div>
     );
   }
@@ -116,8 +111,11 @@ export default function NGOList() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {ngo.name}
             </h3>
-            <p className="text-gray-600 text-sm mb-4">
+            <p className="text-gray-600 text-sm mb-2">
               {ngo.description}
+            </p>
+            <p className="text-indigo-600 text-sm mb-4">
+              Category: {ngo.category.charAt(0).toUpperCase() + ngo.category.slice(1)}
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">

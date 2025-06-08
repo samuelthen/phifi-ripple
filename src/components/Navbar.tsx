@@ -3,11 +3,13 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function Navbar() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isWalletMenuOpen, setIsWalletMenuOpen] = useState(false);
+  const walletMenuRef = useRef<HTMLDivElement>(null);
   const userWallet = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userWallet') || 'null') : null;
 
   const handleDashboardClick = (e: React.MouseEvent) => {
@@ -22,10 +24,29 @@ export default function Navbar() {
     setIsMobileMenuOpen(false);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('userWallet');
+    router.push('/');
+  };
+
   const formatWalletAddress = (address: string) => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
+
+  // Close wallet menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (walletMenuRef.current && !walletMenuRef.current.contains(event.target as Node)) {
+        setIsWalletMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <nav className="bg-white shadow-lg">
@@ -73,8 +94,11 @@ export default function Navbar() {
           {/* Desktop Wallet Display */}
           <div className="hidden sm:flex items-center space-x-6">
             {userWallet && (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-4 bg-black px-4 py-2 rounded-lg">
+              <div className="relative" ref={walletMenuRef}>
+                <button
+                  onClick={() => setIsWalletMenuOpen(!isWalletMenuOpen)}
+                  className="flex items-center space-x-4 bg-black px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                >
                   <Image
                     src="/xrpl-logo.svg"
                     alt="XRPL"
@@ -85,7 +109,22 @@ export default function Navbar() {
                   <div className="text-sm text-white">
                     {formatWalletAddress(userWallet.address)}
                   </div>
-                </div>
+                </button>
+                
+                {/* Wallet Dropdown Menu */}
+                {isWalletMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -167,6 +206,12 @@ export default function Navbar() {
                 <div className="text-base font-medium text-gray-800">
                   {formatWalletAddress(userWallet.address)}
                 </div>
+                <button
+                  onClick={handleLogout}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800"
+                >
+                  Logout
+                </button>
               </div>
             </div>
           </div>
