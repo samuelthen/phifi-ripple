@@ -1,88 +1,38 @@
 import { Client } from 'xrpl';
 
+const TESTNET_URL = 'wss://s.altnet.rippletest.net:51233';
+
 let client: Client | null = null;
 let isConnecting = false;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 3;
-const RECONNECT_DELAY = 2000; // 2 seconds
 
 export async function getTestnetClient(): Promise<Client> {
-  if (client && client.isConnected()) {
+  if (client?.isConnected()) {
+    console.log('[getTestnetClient] Using existing connected client');
     return client;
   }
 
-  if (isConnecting) {
-    // Wait for existing connection attempt
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (client && client.isConnected()) {
-      return client;
-    }
-  }
-
+  console.log('[getTestnetClient] Initializing new XRPL client');
+  client = new Client(TESTNET_URL);
+  
   try {
-    isConnecting = true;
-    reconnectAttempts = 0;
-
-    if (client) {
-      try {
-        await client.disconnect();
-      } catch (err) {
-        console.error('Error disconnecting existing client:', err);
-      }
-    }
-
-    client = new Client('wss://s.altnet.rippletest.net:51233');
-    
-    // Set up error handlers
-    client.on('error', (error) => {
-      console.error('XRPL client error:', error);
-      handleReconnect();
-    });
-
-    client.on('disconnected', () => {
-      console.log('XRPL client disconnected');
-      handleReconnect();
-    });
-
+    console.log('[getTestnetClient] Connecting to XRPL testnet...');
     await client.connect();
-    console.log('XRPL client connected successfully');
+    console.log('[getTestnetClient] Successfully connected to XRPL testnet');
     return client;
   } catch (error) {
-    console.error('Error connecting to XRPL:', error);
+    console.error('[getTestnetClient] Failed to connect to XRPL testnet:', error);
     throw error;
-  } finally {
-    isConnecting = false;
   }
 }
 
-async function handleReconnect() {
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error('Max reconnection attempts reached');
-    return;
-  }
-
-  reconnectAttempts++;
-  console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
-
-  try {
-    if (client) {
-      await client.disconnect();
-    }
-    await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY));
-    await getTestnetClient();
-  } catch (error) {
-    console.error('Reconnection failed:', error);
-  }
-}
-
-// Keep connection alive
+// Keep the connection alive
 setInterval(async () => {
-  if (client && !client.isConnected()) {
-    console.log('Connection lost, attempting to reconnect...');
-    try {
-      await getTestnetClient();
-    } catch (error) {
-      console.error('Failed to maintain connection:', error);
+  try {
+    const client = await getTestnetClient();
+    if (!client.isConnected()) {
+      await client.connect();
     }
+  } catch (error) {
+    console.error('Error maintaining XRPL connection:', error);
   }
-}, 30000); // Check every 30 seconds 
+}, 30000); // Check connection every 30 seconds 

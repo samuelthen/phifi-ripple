@@ -22,11 +22,17 @@ export default function DonorDashboard() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const loadWalletData = useCallback(async (wallet: any) => {
+    console.log('[loadWalletData] Starting data load for wallet:', wallet.address);
     try {
       const [walletBalance, receipts] = await Promise.all([
         getWalletBalance(wallet.address),
         getDonorNFTs(wallet.address),
       ]);
+
+      console.log('[loadWalletData] Initial data loaded:', {
+        balance: walletBalance,
+        receiptCount: receipts.length
+      });
 
       if (walletBalance) setBalance(walletBalance);
       setDonationNFTs(receipts);
@@ -37,6 +43,11 @@ export default function DonorDashboard() {
       for (const nft of receipts) {
         try {
           const metadata = nft.URI ? JSON.parse(nft.URI) : null;
+          console.log('[loadWalletData] Processing donation NFT:', {
+            nftId: nft.NFTokenID,
+            metadata
+          });
+
           if (metadata?.ngoId && metadata?.ngoName) {
             ngoIdToName[metadata.ngoId] = metadata.ngoName;
             const amount = parseFloat(metadata.amount);
@@ -45,16 +56,34 @@ export default function DonorDashboard() {
             }
           }
         } catch (err) {
-          console.warn('Invalid NFT metadata for receipt', nft, err);
+          console.warn('[loadWalletData] Failed to process donation NFT:', {
+            nftId: nft.NFTokenID,
+            error: err
+          });
         }
       }
+
+      console.log('[loadWalletData] Processed donations:', {
+        ngoCount: Object.keys(ngoIdToName).length,
+        donationTotals
+      });
 
       const impactDict: Record<string, any> = {};
       const impactCategoryTotals: Record<string, Record<string, number>> = {};
 
       await Promise.all(
         Object.entries(ngoIdToName).map(async ([ngoId, ngoName]) => {
+          console.log('[loadWalletData] Fetching impact NFTs for NGO:', {
+            ngoId,
+            ngoName
+          });
+
           const impacts = await getImpactNFTs(ngoId);
+          console.log('[loadWalletData] Impact NFTs fetched:', {
+            ngoId,
+            impactCount: impacts.length
+          });
+
           for (const nft of impacts) {
             try {
               const metadata = nft.URI ? JSON.parse(nft.URI) : null;
@@ -80,7 +109,11 @@ export default function DonorDashboard() {
                 }
                 impactCategoryTotals[ngoId][category] = (impactCategoryTotals[ngoId][category] || 0) + amount;
               }
-            } catch {
+            } catch (err) {
+              console.warn('[loadWalletData] Failed to process impact NFT:', {
+                nftId: nft.NFTokenID,
+                error: err
+              });
               impactDict[nft.NFTokenID] = {
                 id: nft.NFTokenID,
                 donationId: nft.NFTokenID,
@@ -98,6 +131,11 @@ export default function DonorDashboard() {
         })
       );
 
+      console.log('[loadWalletData] Processed impact data:', {
+        impactCount: Object.keys(impactDict).length,
+        categoryTotals: impactCategoryTotals
+      });
+
       const totalDonation = Object.values(donationTotals).reduce((sum, val) => sum + val, 0);
       const weightedCategoryTotals: Record<string, number> = {};
 
@@ -108,20 +146,25 @@ export default function DonorDashboard() {
         }
       }
 
+      console.log('[loadWalletData] Calculated weighted totals:', weightedCategoryTotals);
+
       const totalWeightedAmount = Object.values(weightedCategoryTotals).reduce((sum, val) => sum + val, 0);
       const categoryPercentages: Record<string, number> = {};
       for (const [category, amount] of Object.entries(weightedCategoryTotals)) {
         categoryPercentages[category] = (amount / totalWeightedAmount) * 100;
       }
 
+      console.log('[loadWalletData] Final category proportions:', categoryPercentages);
+
       setImpactMap(impactDict);
       setCategoryProportions(categoryPercentages);
       setIsDataLoaded(true);
     } catch (err) {
-      console.error('Error loading wallet data:', err);
+      console.error('[loadWalletData] Failed to load wallet data:', err);
       setError('Failed to load wallet data');
     } finally {
       setIsLoading(false);
+      console.log('[loadWalletData] Data loading completed');
     }
   }, []);
 

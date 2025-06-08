@@ -4,6 +4,11 @@
 
 PhiFi is a decentralized philanthropy platform built on the XRP Ledger that brings full transparency and traceability to charitable giving. By leveraging XRPL's NFT capabilities, PhiFi creates an immutable record of donations and their impact.
 
+## 🎥 Platform Demo
+
+Watch our platform demo to see PhiFi in action:
+[![PhiFi Demo](https://img.youtube.com/vi/nHzWDdUh4Bw/0.jpg)](https://www.youtube.com/watch?v=nHzWDdUh4Bw)
+
 ## 🌟 Vision
 
 In philanthropy, the biggest problem isn't generosity — it's visibility. Donors give from the heart, but once funds leave their hands, the journey turns opaque. Where does the money go? Who actually benefits? Even NGOs struggle to report impact in a verifiable, transparent way.

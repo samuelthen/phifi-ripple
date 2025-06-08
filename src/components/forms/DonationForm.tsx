@@ -17,20 +17,27 @@ export default function DonationForm() {
   const [ngos, setNGOs] = useState<NGO[]>([]);
 
   useEffect(() => {
+    console.log('[useEffect] Attempting to load wallet from localStorage');
     const storedWallet = localStorage.getItem('userWallet');
     if (!storedWallet) {
+      console.warn('[useEffect] No wallet found, redirecting...');
       router.push('/');
       return;
     }
-    setUserWallet(JSON.parse(storedWallet));
+    const parsedWallet = JSON.parse(storedWallet);
+    console.log('[useEffect] Loaded wallet:', parsedWallet);
+    setUserWallet(parsedWallet);
     loadNGOs();
   }, [router]);
 
   const loadNGOs = async () => {
+    console.log('[loadNGOs] Fetching verified NGOs...');
     try {
       const verifiedNGOs = await getVerifiedNGOs();
+      console.log('[loadNGOs] NGOs loaded:', verifiedNGOs);
       setNGOs(verifiedNGOs);
     } catch (err) {
+      console.error('[loadNGOs] Error fetching NGOs:', err);
       setError('Failed to load NGOs');
     }
   };
@@ -39,18 +46,27 @@ export default function DonationForm() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
+    console.log('[handleSubmit] Starting donation process');
+    
     try {
       if (!userWallet) {
+        console.error('[handleSubmit] No wallet found');
         throw new Error('Wallet not found');
       }
 
       const ngo = ngos.find(n => n.id === selectedNGO);
       if (!ngo) {
+        console.error('[handleSubmit] Selected NGO not found:', selectedNGO);
         throw new Error('Selected NGO not found');
       }
 
-      // Send XRP to NGO
+      console.log('[handleSubmit] Preparing XRP transfer:', {
+        from: userWallet.address,
+        to: ngo.wallet_address,
+        amount,
+        purpose,
+      });
+
       const txHash = await sendXRP(
         userWallet.secret,
         ngo.wallet_address,
@@ -58,24 +74,33 @@ export default function DonationForm() {
         purpose
       );
 
-      // Mint NFT receipt
-      await mintDonationReceipt(userWallet.secret, {
+      console.log('[handleSubmit] XRP transfer successful, txHash:', txHash);
+
+      const receiptData = {
         amount,
         ngoId: ngo.wallet_address,
         ngoName: ngo.name,
         purpose,
         category: ngo.category,
+        recipient: purpose,
         txHash,
         timestamp: Date.now(),
-        impactWindow: 12 * 30 * 24 * 60 * 60 * 1000, // 12 months in milliseconds
-      });
+        impactWindow: 12 * 30 * 24 * 60 * 60 * 1000,
+        wallet_address: userWallet.address
+      };
 
-      // Redirect to donor dashboard
+      console.log('[handleSubmit] Minting NFT receipt with data:', receiptData);
+
+      await mintDonationReceipt(userWallet.secret, receiptData);
+
+      console.log('[handleSubmit] NFT receipt minted successfully, redirecting to donor dashboard');
       router.push('/donor');
     } catch (err) {
+      console.error('[handleSubmit] Donation process failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to process donation');
     } finally {
       setIsLoading(false);
+      console.log('[handleSubmit] Donation process completed');
     }
   };
 
@@ -95,7 +120,10 @@ export default function DonationForm() {
           <select
             id="ngo"
             value={selectedNGO}
-            onChange={(e) => setSelectedNGO(e.target.value)}
+            onChange={(e) => {
+              console.log('[UI] Selected NGO ID:', e.target.value);
+              setSelectedNGO(e.target.value);
+            }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             required
           >
@@ -116,7 +144,10 @@ export default function DonationForm() {
             type="number"
             id="amount"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              console.log('[UI] Amount changed:', e.target.value);
+              setAmount(e.target.value);
+            }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             min="1"
             step="0.1"
@@ -131,7 +162,10 @@ export default function DonationForm() {
           <textarea
             id="purpose"
             value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
+            onChange={(e) => {
+              console.log('[UI] Purpose updated:', e.target.value);
+              setPurpose(e.target.value);
+            }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             rows={3}
             required
@@ -152,4 +186,4 @@ export default function DonationForm() {
       </form>
     </div>
   );
-} 
+}
